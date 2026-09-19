@@ -7,6 +7,7 @@ import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Polygon;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
@@ -16,7 +17,6 @@ import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.List;
 
-import javax.swing.BorderFactory;
 import javax.swing.DefaultCellEditor;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -34,15 +34,18 @@ import com.itson.jgantt.domain.valueobject.TaskId;
 import com.itson.jgantt.ui.model.OutlineTaskTableModel;
 import com.itson.jgantt.ui.model.TaskEditListener;
 import com.itson.jgantt.ui.util.TaskOutline;
+import com.itson.jgantt.ui.util.UiFonts;
 
 public final class TaskTablePanel extends JPanel {
 
-	public static final int ROW_HEIGHT = 32;
+    public static final int ROW_HEIGHT = 32;
 
-	private static final Color ZEBRA_COLOR = new Color(0xF5F7FB);
-	private static final Color PROGRESS_TRACK_COLOR = new Color(0xE3E7EC);
-	private static final Color PROGRESS_COLOR = new Color(0x3B82F6);
-	private static final Color TEXT_COLOR = new Color(0x333333);
+    private static final Color ZEBRA_COLOR = new Color(0xF5F7FB);
+    private static final Color PROGRESS_TRACK_COLOR = new Color(0xE3E7EC);
+    private static final Color PROGRESS_COLOR = new Color(0x3B82F6);
+    private static final Color TEXT_COLOR = new Color(0x334155);
+    private static final Color SELECTED_TEXT_COLOR = new Color(0x1E3A8A);
+    private static final Color MILESTONE_COLOR = new Color(0xF59E0B);
 
 	private final OutlineTaskTableModel model;
 	private final JTable table;
@@ -144,8 +147,8 @@ public final class TaskTablePanel extends JPanel {
 				TaskDto task = model.visibleTasks().get(row);
 				Rectangle cell = table.getCellRect(row, viewColumn, true);
 				int xInCell = e.getX() - cell.x;
-				int glyphStart = 2 + task.outlineLevel() * 14;
-				if (xInCell >= glyphStart && xInCell <= glyphStart + 14) {
+int glyphStart = 4 + task.outlineLevel() * 14;
+                if (xInCell >= glyphStart && xInCell <= glyphStart + 14) {
 					model.toggleExpanded(row);
 					if (layoutChanged != null) {
 						layoutChanged.run();
@@ -155,32 +158,67 @@ public final class TaskTablePanel extends JPanel {
 		});
 	}
 
-	private final class NameRenderer extends DefaultTableCellRenderer {
+private final class NameRenderer extends JPanel implements TableCellRenderer {
 
-		@Override
-		public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
-			boolean hasFocus, int row, int column) {
-			JLabel label = (JLabel) super.getTableCellRendererComponent(
-				table, value, isSelected, hasFocus, row, column);
-			paintZebra(this, table, row, isSelected);
-			TaskDto task = model.visibleTasks().get(row);
-			boolean hasChildren = TaskOutline.hasChildren(model.allTasks(), task.id());
-			boolean expanded = model.isExpanded(row);
+        private TaskDto task;
+        private String text;
+        private boolean expanded;
+        private boolean selected;
+        private Color background;
 
-			String glyph;
-			if (hasChildren) {
-				glyph = expanded ? "\u25BE " : "\u25B8 ";
-			} else if (task.milestone()) {
-				glyph = "\u25C6 ";
-			} else {
-				glyph = "   ";
-			}
-			label.setText(glyph + task.name());
-			label.setBorder(BorderFactory.createEmptyBorder(0, 2 + task.outlineLevel() * 14, 0, 4));
-			return label;
-		}
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                boolean hasFocus, int row, int column) {
+            task = model.visibleTasks().get(row);
+            text = String.valueOf(value);
+            expanded = model.isExpanded(row);
+            selected = isSelected;
+            background = isSelected ? table.getSelectionBackground()
+                    : (row % 2 == 0 ? Color.WHITE : ZEBRA_COLOR);
+            return this;
+        }
 
-	}
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(background);
+            g2.fillRect(0, 0, getWidth(), getHeight());
+
+            int indent = 4 + task.outlineLevel() * 14;
+            boolean hasChildren = TaskOutline.hasChildren(model.allTasks(), task.id());
+            if (hasChildren) {
+                int cx = indent + 5;
+                int cy = getHeight() / 2;
+                Polygon triangle = new Polygon();
+                if (expanded) {
+                    triangle.addPoint(cx - 4, cy - 3);
+                    triangle.addPoint(cx + 4, cy - 3);
+                    triangle.addPoint(cx, cy + 3);
+                } else {
+                    triangle.addPoint(cx - 3, cy - 4);
+                    triangle.addPoint(cx - 3, cy + 4);
+                    triangle.addPoint(cx + 3, cy);
+                }
+                g2.setColor(selected ? SELECTED_TEXT_COLOR : TEXT_COLOR);
+                g2.fillPolygon(triangle);
+            } else if (task.milestone()) {
+                int cx = indent + 5;
+                int cy = getHeight() / 2;
+                int size = 5;
+                int[] xs = {cx, cx + size, cx, cx - size};
+                int[] ys = {cy - size, cy, cy + size, cy};
+                g2.setColor(MILESTONE_COLOR);
+                g2.fillPolygon(xs, ys, 4);
+            }
+
+            g2.setFont(UiFonts.regular(13));
+            g2.setColor(selected ? SELECTED_TEXT_COLOR : TEXT_COLOR);
+            FontMetrics fm = g2.getFontMetrics();
+            g2.drawString(text, indent + 16, (getHeight() + fm.getAscent()) / 2 - 2);
+            g2.dispose();
+        }
+    }
 
 	private static final class LeftAlignedRenderer extends DefaultTableCellRenderer {
 
