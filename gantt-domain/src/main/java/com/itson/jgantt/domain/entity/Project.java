@@ -1,5 +1,6 @@
 package com.itson.jgantt.domain.entity;
 
+import java.time.LocalDate;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -11,6 +12,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 
 import com.itson.jgantt.domain.exception.GanttDomainException;
 import com.itson.jgantt.domain.valueobject.ProjectId;
@@ -23,12 +25,18 @@ public final class Project {
 	private String name;
 	private final List<Task> tasks = new ArrayList<>();
 	private final List<TaskLink> links = new ArrayList<>();
+	private final Set<LocalDate> nonWorkingDays = new TreeSet<>();
 
 	public Project(ProjectId id, String name) {
 		this(id, name, List.of(), List.of());
 	}
 
 	public Project(ProjectId id, String name, List<Task> tasks, List<TaskLink> links) {
+		this(id, name, tasks, links, Set.of());
+	}
+
+	public Project(ProjectId id, String name, List<Task> tasks, List<TaskLink> links,
+		Set<LocalDate> nonWorkingDays) {
 		Objects.requireNonNull(id, "id");
 		Objects.requireNonNull(name, "name");
 		if (name.isBlank()) {
@@ -63,6 +71,9 @@ public final class Project {
 		}
 		this.tasks.addAll(tasks);
 		this.links.addAll(links);
+		for (LocalDate date : nonWorkingDays) {
+			this.nonWorkingDays.add(Objects.requireNonNull(date, "date"));
+		}
 	}
 
 	public ProjectId id() {
@@ -86,6 +97,25 @@ public final class Project {
 
 	public List<TaskLink> links() {
 		return Collections.unmodifiableList(links);
+	}
+
+	public Set<LocalDate> nonWorkingDays() {
+		return Collections.unmodifiableSet(nonWorkingDays);
+	}
+
+	public void addNonWorkingDay(LocalDate date) {
+		nonWorkingDays.add(Objects.requireNonNull(date, "date"));
+	}
+
+	public void removeNonWorkingDay(LocalDate date) {
+		nonWorkingDays.remove(Objects.requireNonNull(date, "date"));
+	}
+
+	public void replaceNonWorkingDays(Set<LocalDate> dates) {
+		nonWorkingDays.clear();
+		for (LocalDate date : Objects.requireNonNull(dates, "dates")) {
+			nonWorkingDays.add(Objects.requireNonNull(date, "date"));
+		}
 	}
 
 	public Optional<Task> find(TaskId taskId) {
@@ -155,16 +185,16 @@ public final class Project {
 		replaceTask(task);
 	}
 
-public void removeTask(TaskId taskId) {
-        Objects.requireNonNull(taskId, "taskId");
-        if (find(taskId).isEmpty()) {
-            throw new GanttDomainException("Task does not exist: " + taskId);
-        }
-        Set<TaskId> toRemove = new HashSet<>();
-        collectSubtree(taskId, toRemove);
-        tasks.removeIf(task -> toRemove.contains(task.id()));
-        links.removeIf(link -> toRemove.contains(link.predecessorId()) || toRemove.contains(link.successorId()));
-    }
+	public void removeTask(TaskId taskId) {
+		Objects.requireNonNull(taskId, "taskId");
+		if (find(taskId).isEmpty()) {
+			throw new GanttDomainException("Task does not exist: " + taskId);
+		}
+		Set<TaskId> toRemove = new HashSet<>();
+		collectSubtree(taskId, toRemove);
+		tasks.removeIf(task -> toRemove.contains(task.id()));
+		links.removeIf(link -> toRemove.contains(link.predecessorId()) || toRemove.contains(link.successorId()));
+	}
 
 	public TaskType taskTypeOf(TaskId taskId) {
 		return find(taskId).orElseThrow(() -> new GanttDomainException("Task does not exist: " + taskId)).type();

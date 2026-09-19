@@ -18,6 +18,7 @@ import com.itson.jgantt.ui.util.Messages;
 public final class OpenProjectDialog {
 
 	private OpenProjectDialog() {
+		// ...
 	}
 
 	public static ProjectId show(Component parent, List<ProjectSummaryDto> projects) {

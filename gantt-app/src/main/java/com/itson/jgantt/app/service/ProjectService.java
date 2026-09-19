@@ -1,6 +1,8 @@
 package com.itson.jgantt.app.service;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 import com.itson.jgantt.app.dto.ProjectDto;
 import com.itson.jgantt.app.dto.ProjectSummaryDto;
@@ -37,6 +39,13 @@ public final class ProjectService {
     public ProjectDto rename(ProjectId id, String newName) {
         Project project = load(id);
         project.rename(newName);
+        repository.save(project);
+        return ProjectMapper.toDto(project);
+    }
+
+    public ProjectDto updateNonWorkingDays(ProjectId id, Set<LocalDate> nonWorkingDays) {
+        Project project = load(id);
+        project.replaceNonWorkingDays(nonWorkingDays);
         repository.save(project);
         return ProjectMapper.toDto(project);
     }

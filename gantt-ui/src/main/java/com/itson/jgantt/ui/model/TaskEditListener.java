@@ -6,11 +6,12 @@ import com.itson.jgantt.domain.valueobject.TaskId;
 
 public interface TaskEditListener {
 
-    void onRename(TaskId taskId, String newName);
+	void onRename(TaskId taskId, String newName);
 
-    void onStartChange(TaskId taskId, LocalDate newStart);
+	void onStartChange(TaskId taskId, LocalDate newStart);
 
-    void onEndChange(TaskId taskId, LocalDate newEnd);
+	void onEndChange(TaskId taskId, LocalDate newEnd);
 
-    void onProgressChange(TaskId taskId, float newProgress);
+	void onProgressChange(TaskId taskId, float newProgress);
+
 }

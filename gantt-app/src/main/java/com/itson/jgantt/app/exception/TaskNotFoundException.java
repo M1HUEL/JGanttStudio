@@ -4,7 +4,8 @@ import com.itson.jgantt.domain.valueobject.TaskId;
 
 public class TaskNotFoundException extends RuntimeException {
 
-    public TaskNotFoundException(TaskId id) {
-        super("Task not found: " + id);
-    }
+	public TaskNotFoundException(TaskId id) {
+		super("Task not found: " + id);
+	}
+
 }

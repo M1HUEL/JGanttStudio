@@ -14,38 +14,39 @@ import com.itson.jgantt.domain.valueobject.TaskId;
 
 public final class LinkService {
 
-    private final ProjectRepository repository;
-    private final TaskScheduler scheduler;
+	private final ProjectRepository repository;
+	private final TaskScheduler scheduler;
 
-    public LinkService(ProjectRepository repository, TaskScheduler scheduler) {
-        this.repository = repository;
-        this.scheduler = scheduler;
-    }
+	public LinkService(ProjectRepository repository, TaskScheduler scheduler) {
+		this.repository = repository;
+		this.scheduler = scheduler;
+	}
 
-    public ProjectDto addLink(ProjectId projectId, TaskId predecessorId, TaskId successorId,
-            DependencyType type, Lag lag) {
-        Project project = load(projectId);
-        TaskLink link = new TaskLink(predecessorId, successorId, type, lag);
-        project.addLink(link);
-        scheduler.reschedule(project, successorId);
-        repository.save(project);
-        return ProjectMapper.toDto(project);
-    }
+	public ProjectDto addLink(ProjectId projectId, TaskId predecessorId, TaskId successorId,
+		DependencyType type, Lag lag) {
+		Project project = load(projectId);
+		TaskLink link = new TaskLink(predecessorId, successorId, type, lag);
+		project.addLink(link);
+		scheduler.reschedule(project, successorId);
+		repository.save(project);
+		return ProjectMapper.toDto(project);
+	}
 
-    public ProjectDto removeLink(ProjectId projectId, TaskId predecessorId, TaskId successorId) {
-        Project project = load(projectId);
-        TaskLink existing = project.links().stream()
-                .filter(link -> link.predecessorId().equals(predecessorId)
-                        && link.successorId().equals(successorId))
-                .findFirst()
-                .orElseThrow(() -> new TaskLinkNotFoundException(predecessorId, successorId));
-        project.removeLink(existing);
-        repository.save(project);
-        return ProjectMapper.toDto(project);
-    }
+	public ProjectDto removeLink(ProjectId projectId, TaskId predecessorId, TaskId successorId) {
+		Project project = load(projectId);
+		TaskLink existing = project.links().stream()
+			.filter(link -> link.predecessorId().equals(predecessorId)
+			&& link.successorId().equals(successorId))
+			.findFirst()
+			.orElseThrow(() -> new TaskLinkNotFoundException(predecessorId, successorId));
+		project.removeLink(existing);
+		repository.save(project);
+		return ProjectMapper.toDto(project);
+	}
 
-    private Project load(ProjectId id) {
-        return repository.findById(id)
-                .orElseThrow(() -> new ProjectNotFoundException(id));
-    }
+	private Project load(ProjectId id) {
+		return repository.findById(id)
+			.orElseThrow(() -> new ProjectNotFoundException(id));
+	}
+
 }

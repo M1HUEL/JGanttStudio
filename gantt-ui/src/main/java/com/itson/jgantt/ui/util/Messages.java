@@ -11,6 +11,7 @@ public final class Messages {
 	private static ResourceBundle bundle = ResourceBundle.getBundle(BASE_NAME, locale);
 
 	private Messages() {
+		// ...
 	}
 
 	public static Locale locale() {

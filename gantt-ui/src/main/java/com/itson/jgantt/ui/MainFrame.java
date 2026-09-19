@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
@@ -38,6 +39,7 @@ import com.itson.jgantt.app.dto.TaskDto;
 import com.itson.jgantt.domain.valueobject.ProjectId;
 import com.itson.jgantt.domain.valueobject.TaskId;
 import com.itson.jgantt.ui.controller.ProjectController;
+import com.itson.jgantt.ui.dialog.NonWorkingDaysDialog;
 import com.itson.jgantt.ui.dialog.OpenProjectDialog;
 import com.itson.jgantt.ui.model.TaskEditListener;
 import com.itson.jgantt.ui.panel.GanttChartPanel;
@@ -139,6 +141,8 @@ public final class MainFrame extends JFrame {
 		deleteItem = menuItem(Messages.get("action.deleteTask"),
 			KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), e -> deleteSelection());
 		editMenu.add(deleteItem);
+		editMenu.addSeparator();
+		editMenu.add(menuItem(Messages.get("action.nonWorkingDays"), e -> configureNonWorkingDays()));
 		menuBar.add(editMenu);
 
 		JMenu linkMenu = new JMenu(Messages.get("menu.links"));
@@ -299,6 +303,15 @@ public final class MainFrame extends JFrame {
 		}
 	}
 
+	private void configureNonWorkingDays() {
+		ProjectDto dto = controller.current();
+		if (dto == null) {
+			return;
+		}
+		NonWorkingDaysDialog.show(this, dto.nonWorkingDays())
+			.ifPresent(days -> runSafely(() -> controller.updateNonWorkingDays(days)));
+	}
+
 	private void addTask() {
 		String name = JOptionPane.showInputDialog(this,
 			Messages.get("dialog.newTask.message"),
@@ -396,7 +409,8 @@ public final class MainFrame extends JFrame {
 			return;
 		}
 		ProjectDto dto = controller.current();
-		chartPanel.setData(dto.tasks(), tablePanel.visibleTasks(), dto.links());
+		chartPanel.setData(dto.tasks(), tablePanel.visibleTasks(), dto.links(),
+			Set.copyOf(dto.nonWorkingDays()));
 	}
 
 	private void updateStatus() {

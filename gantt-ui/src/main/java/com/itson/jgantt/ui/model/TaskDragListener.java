@@ -6,5 +6,6 @@ import com.itson.jgantt.domain.valueobject.TaskId;
 
 public interface TaskDragListener {
 
-    void onDatesChange(TaskId taskId, LocalDate newStart, LocalDate newEnd);
+	void onDatesChange(TaskId taskId, LocalDate newStart, LocalDate newEnd);
+
 }

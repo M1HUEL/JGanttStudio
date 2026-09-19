@@ -7,11 +7,11 @@ import com.itson.jgantt.domain.exception.GanttDomainException;
 
 public record DateRange(LocalDate start, LocalDate end) {
 
-public DateRange {
-        if (start == null || end == null) {
-            throw new GanttDomainException("DateRange bounds must not be null");
-        }
-        if (start.isAfter(end)) {
+	public DateRange {
+		if (start == null || end == null) {
+			throw new GanttDomainException("DateRange bounds must not be null");
+		}
+		if (start.isAfter(end)) {
 			throw new GanttDomainException("start (" + start + ") must not be after end (" + end + ")");
 		}
 	}
