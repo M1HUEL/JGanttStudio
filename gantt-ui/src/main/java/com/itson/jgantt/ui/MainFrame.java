@@ -200,6 +200,7 @@ public final class MainFrame extends JFrame {
 		toolbar = newToolbar;
 		tablePanel.refreshColumnHeaders();
 		welcomePanel.refreshTexts();
+		chartPanel.repaint();
 		updateStatus();
 		validate();
 	}

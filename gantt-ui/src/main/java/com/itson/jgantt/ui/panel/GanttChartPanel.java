@@ -27,6 +27,7 @@ import com.itson.jgantt.app.dto.TaskDto;
 import com.itson.jgantt.app.dto.TaskLinkDto;
 import com.itson.jgantt.domain.valueobject.TaskId;
 import com.itson.jgantt.ui.model.TaskDragListener;
+import com.itson.jgantt.ui.util.Messages;
 import com.itson.jgantt.ui.util.TimeScale;
 import com.itson.jgantt.ui.util.UiFonts;
 
@@ -50,8 +51,8 @@ public final class GanttChartPanel extends JComponent {
 	private static final Color TEXT_COLOR = new Color(0x334155);
 	private static final Color GRAY_TEXT_COLOR = new Color(0x64748B);
 	private static final Color WEEKEND_COLOR = new Color(0xFAFAFB);
-    private static final Color NON_WORKING_COLOR = new Color(0xFFF3F0);
-    private static final Color NON_WORKING_HEADER_COLOR = new Color(0xFBE4E1);
+	private static final Color NON_WORKING_COLOR = new Color(0xFFF3F0);
+	private static final Color NON_WORKING_HEADER_COLOR = new Color(0xFBE4E1);
 	private static final Color SELECTION_COLOR = new Color(59, 130, 246, 38);
 	private static final Color SELECTED_BAR_COLOR = new Color(0x1E3A8A);
 	private static final Color ZEBRA_COLOR = new Color(0xF5F7FB);
@@ -61,7 +62,8 @@ public final class GanttChartPanel extends JComponent {
 	private static final Font MONTH_FONT = UiFonts.semiBold(12);
 	private static final Font DAY_LETTER_FONT = UiFonts.medium(11);
 	private static final Font DAY_NUMBER_FONT = UiFonts.regular(9);
-	private static final String[] WEEKDAY_LETTERS = {"M", "T", "W", "T", "F", "S", "S"};
+	private static final String[] WEEKDAY_LETTERS_EN = {"M", "T", "W", "T", "F", "S", "S"};
+	private static final String[] WEEKDAY_LETTERS_ES = {"L", "M", "X", "J", "V", "S", "D"};
 
 	private final TimeScale timeScale = new TimeScale();
 	private List<TaskDto> allTasks = List.of();
@@ -109,7 +111,7 @@ public final class GanttChartPanel extends JComponent {
 	}
 
 	public void setData(List<TaskDto> allTasks, List<TaskDto> visible, List<TaskLinkDto> links,
-			Set<LocalDate> nonWorkingDays) {
+		Set<LocalDate> nonWorkingDays) {
 		this.allTasks = allTasks;
 		this.visible = visible;
 		this.links = links;
@@ -272,6 +274,12 @@ public final class GanttChartPanel extends JComponent {
 		g.setStroke(new BasicStroke(1f));
 	}
 
+	private static String[] weekdayLetters() {
+		return Messages.locale().getLanguage().startsWith("es")
+			? WEEKDAY_LETTERS_ES
+			: WEEKDAY_LETTERS_EN;
+	}
+
 	private void paintHeader(Graphics2D g) {
 		g.setColor(HEADER_COLOR);
 		g.fillRect(0, 0, getWidth(), HEADER_HEIGHT);
@@ -318,9 +326,10 @@ public final class GanttChartPanel extends JComponent {
 		if (timeScale.dayWidth() >= 10) {
 			g.setFont(DAY_LETTER_FONT);
 			g.setColor(GRAY_TEXT_COLOR);
+			String[] letters = weekdayLetters();
 			for (LocalDate date = rangeStart; !date.isAfter(rangeEnd); date = date.plusDays(1)) {
 				int x = timeScale.xOf(date) + 3;
-				g.drawString(WEEKDAY_LETTERS[date.getDayOfWeek().getValue() - 1], x, dayBandY + 13);
+				g.drawString(letters[date.getDayOfWeek().getValue() - 1], x, dayBandY + 13);
 			}
 		}
 		if (timeScale.dayWidth() >= 8) {
