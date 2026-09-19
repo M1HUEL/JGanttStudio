@@ -2,6 +2,7 @@ package com.itson.jgantt.app.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 
 import org.junit.jupiter.api.Test;
@@ -69,7 +70,7 @@ class TaskSchedulerTest {
 	@Test
 	void startSkipsConfiguredNonWorkingDay() {
 		Project project = emptyProject();
-		project.addNonWorkingDay(BASE.plusDays(1));
+		project.addNonWorkingDay(DayOfWeek.TUESDAY);
 		Task predecessor = task("A", 1, 1);
 		Task successor = task("B", 3, 3);
 		project.addTask(predecessor);

@@ -6,7 +6,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -86,7 +88,7 @@ public final class SQLiteProjectRepository implements ProjectRepository {
 				String projectName = rs.getString("name");
 				List<Task> tasks = loadTasks(connection, id);
 				List<TaskLink> links = loadLinks(connection, id);
-				Set<LocalDate> nonWorkingDays = loadNonWorkingDays(connection, id);
+				Set<DayOfWeek> nonWorkingDays = loadNonWorkingDays(connection, id);
 				return Optional.of(new Project(id, projectName, tasks, links, nonWorkingDays));
 			}
 		} catch (SQLException ex) {
@@ -230,27 +232,35 @@ public final class SQLiteProjectRepository implements ProjectRepository {
 		try (PreparedStatement insert = connection.prepareStatement("""
                 INSERT INTO non_working_days (project_id, date)
                 VALUES (?, ?)""")) {
-			for (LocalDate date : project.nonWorkingDays()) {
+			for (DayOfWeek day : project.nonWorkingDays()) {
 				insert.setString(1, project.id().value().toString());
-				insert.setString(2, date.toString());
+				insert.setString(2, day.name());
 				insert.addBatch();
 			}
 			insert.executeBatch();
 		}
 	}
 
-	private Set<LocalDate> loadNonWorkingDays(Connection connection, ProjectId projectId) throws SQLException {
+	private Set<DayOfWeek> loadNonWorkingDays(Connection connection, ProjectId projectId) throws SQLException {
 		try (PreparedStatement ps = connection.prepareStatement("""
                 SELECT date FROM non_working_days WHERE project_id = ?
                 ORDER BY date""")) {
 			ps.setString(1, projectId.value().toString());
 			try (ResultSet rs = ps.executeQuery()) {
-				Set<LocalDate> dates = new TreeSet<>();
+				Set<DayOfWeek> days = new TreeSet<>();
 				while (rs.next()) {
-					dates.add(LocalDate.parse(rs.getString("date")));
+					days.add(parseNonWorkingDay(rs.getString("date")));
 				}
-				return dates;
+				return days;
 			}
+		}
+	}
+
+	private static DayOfWeek parseNonWorkingDay(String raw) {
+		try {
+			return LocalDate.parse(raw).getDayOfWeek();
+		} catch (DateTimeParseException legacy) {
+			return DayOfWeek.valueOf(raw);
 		}
 	}
 

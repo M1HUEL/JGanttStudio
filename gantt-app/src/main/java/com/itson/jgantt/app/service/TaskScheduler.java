@@ -58,14 +58,13 @@ public final class TaskScheduler {
 	}
 
 	private boolean isWorkingDay(Project project, LocalDate date) {
-		DayOfWeek day = date.getDayOfWeek();
-		if (day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY) {
-			return false;
-		}
-		return !project.nonWorkingDays().contains(date);
+		return !project.nonWorkingDays().contains(date.getDayOfWeek());
 	}
 
-	private LocalDate nextWorkingDay(Project project, LocalDate date) {
+	public LocalDate nextWorkingDay(Project project, LocalDate date) {
+		if (project.nonWorkingDays().size() >= DayOfWeek.values().length) {
+			return date;
+		}
 		LocalDate result = date;
 		while (!isWorkingDay(project, result)) {
 			result = result.plusDays(1);

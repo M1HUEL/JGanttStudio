@@ -7,6 +7,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -61,6 +62,6 @@ class ExportersTest {
 			LocalDate.of(2026, 1, 12), LocalDate.of(2026, 1, 13), TaskType.TASK, 0,
 			null, 1, true);
 		return new ProjectDto(projectId, "Demo", List.of(alpha, beta), List.of(),
-			List.of(LocalDate.of(2026, 1, 6)));
+			List.of(DayOfWeek.WEDNESDAY));
 	}
 }

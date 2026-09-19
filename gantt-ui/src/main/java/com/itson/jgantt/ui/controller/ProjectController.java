@@ -1,5 +1,6 @@
 package com.itson.jgantt.ui.controller;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -68,7 +69,7 @@ public final class ProjectController {
 		notifyListeners();
 	}
 
-	public void updateNonWorkingDays(Set<LocalDate> nonWorkingDays) {
+	public void updateNonWorkingDays(Set<DayOfWeek> nonWorkingDays) {
 		if (currentId == null) {
 			return;
 		}

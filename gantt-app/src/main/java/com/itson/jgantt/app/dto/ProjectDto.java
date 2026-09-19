@@ -1,6 +1,6 @@
 package com.itson.jgantt.app.dto;
 
-import java.time.LocalDate;
+import java.time.DayOfWeek;
 import java.util.List;
 
 import com.itson.jgantt.domain.valueobject.ProjectId;
@@ -11,7 +11,7 @@ public record ProjectDto(
 	String name,
 	List<TaskDto> tasks,
 	List<TaskLinkDto> links,
-	List<LocalDate> nonWorkingDays) {
+	List<DayOfWeek> nonWorkingDays) {
 
 	public TaskDto taskOf(TaskId taskId) {
 		return tasks.stream()

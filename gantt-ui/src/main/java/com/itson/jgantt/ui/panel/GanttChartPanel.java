@@ -16,6 +16,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -61,12 +62,10 @@ public final class GanttChartPanel extends JComponent {
 	private static final Color GRID_COLOR = new Color(0xE2E8F0);
 	private static final Color HEADER_COLOR = new Color(0xEEF2F7);
 	private static final Color MONTH_ALT_COLOR = new Color(0xF7F9FC);
-	private static final Color WEEKEND_HEADER_COLOR = new Color(0xE4EAF1);
 	private static final Color TODAY_HEADER_COLOR = new Color(0xFDEAEA);
 	private static final Color TODAY_COLOR = new Color(0xEF4444);
 	private static final Color TEXT_COLOR = new Color(0x334155);
 	private static final Color GRAY_TEXT_COLOR = new Color(0x64748B);
-	private static final Color WEEKEND_COLOR = new Color(0xFAFAFB);
 	private static final Color NON_WORKING_COLOR = new Color(0xFFF3F0);
 	private static final Color NON_WORKING_HEADER_COLOR = new Color(0xFBE4E1);
 	private static final Color SELECTION_COLOR = new Color(59, 130, 246, 38);
@@ -85,7 +84,7 @@ public final class GanttChartPanel extends JComponent {
 	private List<TaskDto> allTasks = List.of();
 	private List<TaskDto> visible = List.of();
 	private List<TaskLinkDto> links = List.of();
-	private Set<LocalDate> nonWorkingDays = Set.of();
+	private Set<DayOfWeek> nonWorkingDays = EnumSet.noneOf(DayOfWeek.class);
 	private Set<TaskId> selectedIds = Set.of();
 	private TaskDragListener dragListener;
 	private DragMode dragMode = DragMode.NONE;
@@ -127,11 +126,13 @@ public final class GanttChartPanel extends JComponent {
 	}
 
 	public void setData(List<TaskDto> allTasks, List<TaskDto> visible, List<TaskLinkDto> links,
-		Set<LocalDate> nonWorkingDays) {
+		Set<DayOfWeek> nonWorkingDays) {
 		this.allTasks = allTasks;
 		this.visible = visible;
 		this.links = links;
-		this.nonWorkingDays = nonWorkingDays == null ? Set.of() : Set.copyOf(nonWorkingDays);
+		this.nonWorkingDays = nonWorkingDays == null || nonWorkingDays.isEmpty()
+			? EnumSet.noneOf(DayOfWeek.class)
+			: EnumSet.copyOf(nonWorkingDays);
 		updateRange();
 	}
 
@@ -198,7 +199,6 @@ public final class GanttChartPanel extends JComponent {
 
 	private void paintAll(Graphics2D g2) {
 		paintBackground(g2);
-		paintWeekends(g2);
 		paintNonWorkingDays(g2);
 		paintZebraBands(g2);
 		paintGrid(g2);
@@ -241,28 +241,16 @@ public final class GanttChartPanel extends JComponent {
 		}
 	}
 
-	private void paintWeekends(Graphics2D g) {
-		g.setColor(WEEKEND_COLOR);
-		for (LocalDate date = rangeStart; !date.isAfter(rangeEnd); date = date.plusDays(1)) {
-			DayOfWeek day = date.getDayOfWeek();
-			if (day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY) {
-				int x = timeScale.xOf(date);
-				g.fillRect(x, HEADER_HEIGHT, timeScale.dayWidth(), getHeight() - HEADER_HEIGHT);
-			}
-		}
-	}
-
 	private void paintNonWorkingDays(Graphics2D g) {
 		if (nonWorkingDays.isEmpty()) {
 			return;
 		}
 		g.setColor(NON_WORKING_COLOR);
-		for (LocalDate date : nonWorkingDays) {
-			if (date.isBefore(rangeStart) || date.isAfter(rangeEnd)) {
-				continue;
+		for (LocalDate date = rangeStart; !date.isAfter(rangeEnd); date = date.plusDays(1)) {
+			if (nonWorkingDays.contains(date.getDayOfWeek())) {
+				int x = timeScale.xOf(date);
+				g.fillRect(x, HEADER_HEIGHT, timeScale.dayWidth(), getHeight() - HEADER_HEIGHT);
 			}
-			int x = timeScale.xOf(date);
-			g.fillRect(x, HEADER_HEIGHT, timeScale.dayWidth(), getHeight() - HEADER_HEIGHT);
 		}
 	}
 
@@ -322,15 +310,9 @@ public final class GanttChartPanel extends JComponent {
 			if (date.equals(today)) {
 				g.setColor(TODAY_HEADER_COLOR);
 				g.fillRect(timeScale.xOf(date), 0, timeScale.dayWidth(), HEADER_HEIGHT);
-			} else if (nonWorkingDays.contains(date)) {
+			} else if (nonWorkingDays.contains(date.getDayOfWeek())) {
 				g.setColor(NON_WORKING_HEADER_COLOR);
 				g.fillRect(timeScale.xOf(date), 0, timeScale.dayWidth(), HEADER_HEIGHT);
-			} else {
-				DayOfWeek day = date.getDayOfWeek();
-				if (day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY) {
-					g.setColor(WEEKEND_HEADER_COLOR);
-					g.fillRect(timeScale.xOf(date), 0, timeScale.dayWidth(), HEADER_HEIGHT);
-				}
 			}
 		}
 

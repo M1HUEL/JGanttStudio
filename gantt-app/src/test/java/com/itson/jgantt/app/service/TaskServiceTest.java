@@ -42,7 +42,7 @@ class TaskServiceTest {
 			.filter(t -> t.id().equals(rootId))
 			.findFirst().orElseThrow();
 		assertEquals(START.plusDays(7), parent.start());
-		assertEquals(START.plusDays(10), parent.end());
+		assertEquals(START.plusDays(11), parent.end());
 	}
 
 	@Test
@@ -86,14 +86,50 @@ class TaskServiceTest {
 	void changeDatesOnMilestoneForcesPointRange() {
 		ProjectId projectId = projectService.create("Build").id();
 		ProjectDto added = taskService.addTask(projectId,
-			new AddTaskRequest("Go live", START.plusDays(10), START.plusDays(10), TaskType.MILESTONE, null));
+			new AddTaskRequest("Go live", START.plusDays(11), START.plusDays(11), TaskType.MILESTONE, null));
 		TaskId milestoneId = added.tasks().getFirst().id();
 
-		ProjectDto result = taskService.changeDates(projectId, milestoneId, START.plusDays(12), START.plusDays(10));
+		ProjectDto result = taskService.changeDates(projectId, milestoneId, START.plusDays(14), START.plusDays(11));
 
 		TaskDto milestone = result.tasks().getFirst();
-		assertEquals(START.plusDays(12), milestone.start());
-		assertEquals(START.plusDays(12), milestone.end());
+		assertEquals(START.plusDays(14), milestone.start());
+		assertEquals(START.plusDays(14), milestone.end());
+	}
+
+	@Test
+	void addTaskSnapsStartAndEndToWorkingDays() {
+		ProjectId projectId = projectService.create("Build").id();
+
+		ProjectDto result = taskService.addTask(projectId,
+			new AddTaskRequest("Weekend", START.plusDays(2), START.plusDays(3), TaskType.TASK, null));
+
+		TaskDto task = result.tasks().getFirst();
+		assertEquals(START.plusDays(4), task.start());
+		assertEquals(START.plusDays(4), task.end());
+	}
+
+	@Test
+	void addMilestoneSnapsToWorkingDay() {
+		ProjectId projectId = projectService.create("Build").id();
+
+		ProjectDto result = taskService.addTask(projectId,
+			new AddTaskRequest("Go live", START.plusDays(3), START.plusDays(3), TaskType.MILESTONE, null));
+
+		TaskDto milestone = result.tasks().getFirst();
+		assertEquals(START.plusDays(4), milestone.start());
+		assertEquals(START.plusDays(4), milestone.end());
+	}
+
+	@Test
+	void changeDatesSnapsToWorkingDays() {
+		ProjectId projectId = projectService.create("Build").id();
+		TaskId taskId = addTask(projectId, "A", START, START.plusDays(4));
+
+		ProjectDto result = taskService.changeDates(projectId, taskId, START.plusDays(2), START.plusDays(3));
+
+		TaskDto task = result.tasks().stream().filter(t -> t.id().equals(taskId)).findFirst().orElseThrow();
+		assertEquals(START.plusDays(4), task.start());
+		assertEquals(START.plusDays(4), task.end());
 	}
 
 	@Test
@@ -122,7 +158,7 @@ class TaskServiceTest {
 
 		TaskDto milestone = result.tasks().getFirst();
 		assertTrue(milestone.milestone());
-		assertEquals(START.plusDays(10), milestone.start());
+		assertEquals(START.plusDays(11), milestone.start());
 	}
 
 	@Test

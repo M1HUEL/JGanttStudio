@@ -1,6 +1,6 @@
 package com.itson.jgantt.app.service;
 
-import java.time.LocalDate;
+import java.time.DayOfWeek;
 import java.util.List;
 import java.util.Set;
 
@@ -43,7 +43,7 @@ public final class ProjectService {
         return ProjectMapper.toDto(project);
     }
 
-    public ProjectDto updateNonWorkingDays(ProjectId id, Set<LocalDate> nonWorkingDays) {
+    public ProjectDto updateNonWorkingDays(ProjectId id, Set<DayOfWeek> nonWorkingDays) {
         Project project = load(id);
         project.replaceNonWorkingDays(nonWorkingDays);
         repository.save(project);

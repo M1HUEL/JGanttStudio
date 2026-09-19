@@ -1,10 +1,12 @@
 package com.itson.jgantt.domain.entity;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -27,18 +29,18 @@ public final class Project {
 	private String name;
 	private final List<Task> tasks = new ArrayList<>();
 	private final List<TaskLink> links = new ArrayList<>();
-	private final Set<LocalDate> nonWorkingDays = new TreeSet<>();
+	private final Set<DayOfWeek> nonWorkingDays = new TreeSet<>();
 
 	public Project(ProjectId id, String name) {
 		this(id, name, List.of(), List.of());
 	}
 
 	public Project(ProjectId id, String name, List<Task> tasks, List<TaskLink> links) {
-		this(id, name, tasks, links, Set.of());
+		this(id, name, tasks, links, defaultNonWorkingDays());
 	}
 
 	public Project(ProjectId id, String name, List<Task> tasks, List<TaskLink> links,
-		Set<LocalDate> nonWorkingDays) {
+		Set<DayOfWeek> nonWorkingDays) {
 		Objects.requireNonNull(id, "id");
 		Objects.requireNonNull(name, "name");
 		if (name.isBlank()) {
@@ -73,8 +75,8 @@ public final class Project {
 		}
 		this.tasks.addAll(tasks);
 		this.links.addAll(links);
-		for (LocalDate date : nonWorkingDays) {
-			this.nonWorkingDays.add(Objects.requireNonNull(date, "date"));
+		for (DayOfWeek day : nonWorkingDays) {
+			this.nonWorkingDays.add(Objects.requireNonNull(day, "day"));
 		}
 	}
 
@@ -101,23 +103,27 @@ public final class Project {
 		return Collections.unmodifiableList(links);
 	}
 
-	public Set<LocalDate> nonWorkingDays() {
+	public Set<DayOfWeek> nonWorkingDays() {
 		return Collections.unmodifiableSet(nonWorkingDays);
 	}
 
-	public void addNonWorkingDay(LocalDate date) {
-		nonWorkingDays.add(Objects.requireNonNull(date, "date"));
+	public void addNonWorkingDay(DayOfWeek day) {
+		nonWorkingDays.add(Objects.requireNonNull(day, "day"));
 	}
 
-	public void removeNonWorkingDay(LocalDate date) {
-		nonWorkingDays.remove(Objects.requireNonNull(date, "date"));
+	public void removeNonWorkingDay(DayOfWeek day) {
+		nonWorkingDays.remove(Objects.requireNonNull(day, "day"));
 	}
 
-	public void replaceNonWorkingDays(Set<LocalDate> dates) {
+	public void replaceNonWorkingDays(Set<DayOfWeek> days) {
 		nonWorkingDays.clear();
-		for (LocalDate date : Objects.requireNonNull(dates, "dates")) {
-			nonWorkingDays.add(Objects.requireNonNull(date, "date"));
+		for (DayOfWeek day : Objects.requireNonNull(days, "days")) {
+			nonWorkingDays.add(Objects.requireNonNull(day, "day"));
 		}
+	}
+
+	private static Set<DayOfWeek> defaultNonWorkingDays() {
+		return EnumSet.of(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY);
 	}
 
 	public Optional<Task> find(TaskId taskId) {

@@ -27,11 +27,15 @@ public final class TaskService {
 
 	public ProjectDto addTask(ProjectId projectId, AddTaskRequest request) {
 		Project project = load(projectId);
+		LocalDate start = scheduler.nextWorkingDay(project, request.start());
+		LocalDate end = request.type() == TaskType.MILESTONE
+			? start
+			: scheduler.nextWorkingDay(project, request.end());
 		Task task = Task.builder()
 			.id(TaskId.random())
 			.name(request.name())
-			.startsAt(request.start())
-			.endsAt(request.end())
+			.startsAt(start)
+			.endsAt(end)
 			.type(request.type())
 			.parent(request.parentId())
 			.build();
@@ -53,6 +57,8 @@ public final class TaskService {
 			newStart = target;
 			newEnd = target;
 		}
+		newStart = scheduler.nextWorkingDay(project, newStart);
+		newEnd = scheduler.nextWorkingDay(project, newEnd);
 		project.updateTask(task.withRange(new DateRange(newStart, newEnd)));
 		scheduler.reschedule(project, taskId);
 		return save(project);

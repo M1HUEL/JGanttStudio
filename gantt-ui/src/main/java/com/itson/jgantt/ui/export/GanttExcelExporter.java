@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.LocalDate;
+import java.time.DayOfWeek;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -112,20 +112,17 @@ public final class GanttExcelExporter {
 		sheet.setColumnWidth(0, Math.min(sheet.getColumnWidth(0) + 800, 200 * 256));
 	}
 
-	private static void writeCalendarSheet(XSSFWorkbook workbook, List<LocalDate> dates) {
+	private static void writeCalendarSheet(XSSFWorkbook workbook, List<DayOfWeek> days) {
 		XSSFSheet sheet = workbook.createSheet(Messages.get("export.sheet.calendar"));
 		XSSFCellStyle headerStyle = headerStyle(workbook);
-		XSSFCellStyle dateStyle = dateStyle(workbook);
 		XSSFRow header = sheet.createRow(0);
 		XSSFCell cell = header.createCell(0);
-		cell.setCellValue(Messages.get("dialog.nonWorkingDays.date"));
+		cell.setCellValue(Messages.get("export.calendar.day"));
 		cell.setCellStyle(headerStyle);
 		int rowIndex = 1;
-		for (LocalDate date : dates) {
+		for (DayOfWeek day : days) {
 			XSSFRow row = sheet.createRow(rowIndex++);
-			XSSFCell valueCell = row.createCell(0);
-			valueCell.setCellValue(date);
-			valueCell.setCellStyle(dateStyle);
+			row.createCell(0).setCellValue(day.name());
 		}
 		sheet.autoSizeColumn(0);
 	}

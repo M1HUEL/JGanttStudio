@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -122,8 +123,8 @@ class SQLiteProjectRepositoryTest {
 	@Test
 	void roundTripPreservesNonWorkingDays() {
 		Project project = new Project(ProjectId.random(), "Launch");
-		project.addNonWorkingDay(LocalDate.of(2026, 12, 25));
-		project.addNonWorkingDay(LocalDate.of(2026, 12, 24));
+		project.addNonWorkingDay(DayOfWeek.FRIDAY);
+		project.addNonWorkingDay(DayOfWeek.THURSDAY);
 		repository.save(project);
 
 		Project loaded = repository.findById(project.id()).orElseThrow();
@@ -134,16 +135,31 @@ class SQLiteProjectRepositoryTest {
 	@Test
 	void savedProjectCanReplaceNonWorkingDays() {
 		Project project = new Project(ProjectId.random(), "Launch");
-		project.addNonWorkingDay(LocalDate.of(2026, 1, 6));
+		project.addNonWorkingDay(DayOfWeek.TUESDAY);
 		repository.save(project);
 
 		Project modifiable = repository.findById(project.id()).orElseThrow();
-		modifiable.replaceNonWorkingDays(Set.of(LocalDate.of(2026, 5, 1)));
+		modifiable.replaceNonWorkingDays(Set.of(DayOfWeek.MONDAY));
 		repository.save(modifiable);
 
 		Project reloaded = repository.findById(project.id()).orElseThrow();
 
-		assertEquals(Set.of(LocalDate.of(2026, 5, 1)), Set.copyOf(reloaded.nonWorkingDays()));
+		assertEquals(Set.of(DayOfWeek.MONDAY), Set.copyOf(reloaded.nonWorkingDays()));
+	}
+
+	@Test
+	void legacyDateRowIsMigratedToDayOfWeek() throws Exception {
+		Project project = new Project(ProjectId.random(), "Launch");
+		ProjectId id = repository.save(project);
+		try (var connection = java.sql.DriverManager.getConnection(
+			"jdbc:sqlite:" + tempDir.resolve("test.db").toString());
+			var statement = connection.createStatement()) {
+			statement.execute("INSERT INTO non_working_days (project_id, date) VALUES ('" + id.value() + "', '2026-05-01')");
+		}
+
+		Project loaded = repository.findById(id).orElseThrow();
+
+		assertTrue(loaded.nonWorkingDays().contains(LocalDate.of(2026, 5, 1).getDayOfWeek()));
 	}
 
 	private Project sampleProject() {

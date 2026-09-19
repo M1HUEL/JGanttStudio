@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
@@ -69,8 +70,8 @@ class ProjectServiceTest {
 	@Test
 	void updateNonWorkingDaysReplacesProjectDays() {
 		ProjectDto created = projectService.create("Build");
-		Set<LocalDate> days = new HashSet<>(
-			java.util.List.of(LocalDate.of(2026, 12, 24), LocalDate.of(2026, 12, 25)));
+		Set<DayOfWeek> days = new HashSet<>(
+			java.util.List.of(DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY));
 
 		ProjectDto updated = projectService.updateNonWorkingDays(created.id(), days);
 		ProjectDto reloaded = projectService.findById(created.id());
