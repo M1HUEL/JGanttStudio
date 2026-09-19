@@ -112,6 +112,11 @@ public final class ProjectController {
         notifyListeners();
     }
 
+    public void changeDates(TaskId taskId, java.time.LocalDate newStart, java.time.LocalDate newEnd) {
+        current = taskService.changeDates(currentId, taskId, newStart, newEnd);
+        notifyListeners();
+    }
+
     public void setProgress(TaskId taskId, float progress) {
         current = taskService.setProgress(currentId, taskId, progress);
         notifyListeners();

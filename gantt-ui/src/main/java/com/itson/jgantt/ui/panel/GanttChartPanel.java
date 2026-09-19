@@ -2,15 +2,19 @@ package com.itson.jgantt.ui.panel;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Polygon;
 import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +25,7 @@ import javax.swing.JComponent;
 import com.itson.jgantt.app.dto.TaskDto;
 import com.itson.jgantt.app.dto.TaskLinkDto;
 import com.itson.jgantt.domain.valueobject.TaskId;
+import com.itson.jgantt.ui.model.TaskDragListener;
 import com.itson.jgantt.ui.util.TimeScale;
 
 public final class GanttChartPanel extends JComponent {
@@ -49,8 +54,26 @@ public final class GanttChartPanel extends JComponent {
     private List<TaskDto> visible = List.of();
     private List<TaskLinkDto> links = List.of();
     private Set<TaskId> selectedIds = Set.of();
+    private TaskDragListener dragListener;
+    private DragMode dragMode = DragMode.NONE;
+    private TaskId dragTaskId;
+    private LocalDate dragAnchor;
+    private LocalDate dragStartAtPress;
+    private LocalDate dragEndAtPress;
+    private LocalDate draftStart;
+    private LocalDate draftEnd;
     private LocalDate rangeStart;
     private LocalDate rangeEnd;
+
+    public GanttChartPanel() {
+        TaskDragHandler handler = new TaskDragHandler();
+        addMouseListener(handler);
+        addMouseMotionListener(handler);
+    }
+
+    public void setDragListener(TaskDragListener dragListener) {
+        this.dragListener = dragListener;
+    }
 
     public void setData(List<TaskDto> allTasks, List<TaskDto> visible, List<TaskLinkDto> links) {
         this.allTasks = allTasks;
@@ -210,25 +233,38 @@ public final class GanttChartPanel extends JComponent {
         for (int index = 0; index < visible.size(); index++) {
             TaskDto task = visible.get(index);
             boolean selected = selectedIds.contains(task.id());
+            LocalDate start = effectiveStart(task);
+            LocalDate end = effectiveEnd(task);
             int y = HEADER_HEIGHT + index * ROW_HEIGHT;
             int barHeight = Math.max(10, ROW_HEIGHT - 14);
             int barY = y + (ROW_HEIGHT - barHeight) / 2;
 
             if (task.milestone()) {
-                paintMilestone(g, task, barY, barHeight, selected);
+                paintMilestone(g, task, start, barY, barHeight, selected);
             } else {
-                paintTaskBar(g, task, barY, barHeight, selected);
+                paintTaskBar(g, task, start, end, barY, barHeight, selected);
             }
 
             g.setColor(TEXT_COLOR);
-            int labelX = timeScale.xOf(task.end()) + timeScale.dayWidth() + 6;
+            int labelX = timeScale.xOf(end) + timeScale.dayWidth() + 6;
             g.drawString(task.name(), labelX, y + ROW_HEIGHT / 2 + 4);
         }
     }
 
-    private void paintTaskBar(Graphics2D g, TaskDto task, int barY, int barHeight, boolean selected) {
-        int x0 = timeScale.xOf(task.start());
-        int width = timeScale.widthFor(task.start(), task.end());
+    private LocalDate effectiveStart(TaskDto task) {
+        return dragMode != DragMode.NONE && dragTaskId != null && dragTaskId.equals(task.id())
+                ? draftStart : task.start();
+    }
+
+    private LocalDate effectiveEnd(TaskDto task) {
+        return dragMode != DragMode.NONE && dragTaskId != null && dragTaskId.equals(task.id())
+                ? draftEnd : task.end();
+    }
+
+    private void paintTaskBar(Graphics2D g, TaskDto task, LocalDate start, LocalDate end,
+            int barY, int barHeight, boolean selected) {
+        int x0 = timeScale.xOf(start);
+        int width = timeScale.widthFor(start, end);
         g.setColor(BAR_COLOR);
         g.fillRoundRect(x0, barY, width, barHeight, 4, 4);
 
@@ -247,8 +283,9 @@ public final class GanttChartPanel extends JComponent {
         g.setStroke(new BasicStroke(1f));
     }
 
-    private void paintMilestone(Graphics2D g, TaskDto task, int barY, int barHeight, boolean selected) {
-        int centerX = timeScale.xOf(task.start()) + timeScale.dayWidth() / 2;
+    private void paintMilestone(Graphics2D g, TaskDto task, LocalDate date, int barY, int barHeight,
+            boolean selected) {
+        int centerX = timeScale.xOf(date) + timeScale.dayWidth() / 2;
         int centerY = barY + barHeight / 2;
         int size = Math.max(8, barHeight);
         int[] xs = {centerX, centerX + size, centerX, centerX - size};
@@ -320,5 +357,148 @@ public final class GanttChartPanel extends JComponent {
         arrow.addPoint(x - 7, y - 4);
         arrow.addPoint(x - 7, y + 4);
         return arrow;
+    }
+
+    private int rowAt(int y) {
+        int index = (y - HEADER_HEIGHT) / ROW_HEIGHT;
+        return index >= 0 && index < visible.size() ? index : -1;
+    }
+
+    private DragMode hitTest(TaskDto task, int x) {
+        if (task.milestone()) {
+            int centerX = timeScale.xOf(task.start()) + timeScale.dayWidth() / 2;
+            int radius = Math.max(8, Math.max(10, ROW_HEIGHT - 14)) + 8;
+            int dx = x - centerX;
+            if (dx >= -radius && dx <= radius) {
+                return DragMode.MOVE;
+            }
+            return DragMode.NONE;
+        }
+        int x0 = timeScale.xOf(task.start());
+        int x1 = x0 + timeScale.widthFor(task.start(), task.end());
+        if (x < x0 - 4 || x > x1 + 4) {
+            return DragMode.NONE;
+        }
+        int edge = 4;
+        if (x <= x0 + edge) {
+            return DragMode.RESIZE_START;
+        }
+        if (x >= x1 - edge) {
+            return DragMode.RESIZE_END;
+        }
+        return DragMode.MOVE;
+    }
+
+    private void beginDrag(TaskDto task, DragMode mode, int x) {
+        dragTaskId = task.id();
+        dragMode = mode;
+        dragAnchor = timeScale.dateOf(x);
+        dragStartAtPress = task.start();
+        dragEndAtPress = task.end();
+        draftStart = task.start();
+        draftEnd = task.end();
+        repaint();
+    }
+
+    private void updateDrag(int x) {
+        if (dragMode == DragMode.NONE || dragTaskId == null) {
+            return;
+        }
+        long delta = ChronoUnit.DAYS.between(dragAnchor, timeScale.dateOf(x));
+        LocalDate start = dragStartAtPress.plusDays(delta);
+        LocalDate end = dragEndAtPress.plusDays(delta);
+        switch (dragMode) {
+            case MOVE -> {
+                draftStart = start;
+                draftEnd = end;
+            }
+            case RESIZE_START -> {
+                if (!start.isAfter(dragEndAtPress)) {
+                    draftStart = start;
+                    draftEnd = dragEndAtPress;
+                }
+            }
+            case RESIZE_END -> {
+                if (!end.isBefore(dragStartAtPress)) {
+                    draftStart = dragStartAtPress;
+                    draftEnd = end;
+                }
+            }
+            default -> { /* nothing */ }
+        }
+        repaint();
+    }
+
+    private void finishDrag() {
+        if (dragMode == DragMode.NONE || dragTaskId == null) {
+            return;
+        }
+        DragMode finishedMode = dragMode;
+        TaskId finishedId = dragTaskId;
+        LocalDate start = draftStart;
+        LocalDate end = draftEnd;
+        LocalDate originalStart = dragStartAtPress;
+        LocalDate originalEnd = dragEndAtPress;
+        dragMode = DragMode.NONE;
+        dragTaskId = null;
+        repaint();
+        if (dragListener != null
+                && (!start.equals(originalStart) || !end.equals(originalEnd))) {
+            dragListener.onDatesChange(finishedId, start, end);
+        }
+    }
+
+    private enum DragMode {
+        NONE,
+        MOVE,
+        RESIZE_START,
+        RESIZE_END
+    }
+
+    private final class TaskDragHandler extends MouseAdapter {
+
+        @Override
+        public void mousePressed(MouseEvent e) {
+            if (e.getButton() != MouseEvent.BUTTON1 || e.getY() < HEADER_HEIGHT) {
+                return;
+            }
+            int row = rowAt(e.getY());
+            if (row < 0) {
+                return;
+            }
+            TaskDto task = visible.get(row);
+            DragMode mode = hitTest(task, e.getX());
+            if (mode != DragMode.NONE) {
+                beginDrag(task, mode, e.getX());
+            }
+        }
+
+        @Override
+        public void mouseDragged(MouseEvent e) {
+            updateDrag(e.getX());
+        }
+
+        @Override
+        public void mouseReleased(MouseEvent e) {
+            finishDrag();
+        }
+
+        @Override
+        public void mouseMoved(MouseEvent e) {
+            int row = e.getY() < HEADER_HEIGHT ? -1 : rowAt(e.getY());
+            int cursor;
+            if (row < 0) {
+                cursor = Cursor.DEFAULT_CURSOR;
+            } else {
+                cursor = switch (hitTest(visible.get(row), e.getX())) {
+                    case RESIZE_START, RESIZE_END -> Cursor.E_RESIZE_CURSOR;
+                    case MOVE -> Cursor.MOVE_CURSOR;
+                    default -> Cursor.DEFAULT_CURSOR;
+                };
+            }
+            if (getCursor().getType() != cursor) {
+                setCursor(Cursor.getPredefinedCursor(cursor));
+            }
+        }
     }
 }

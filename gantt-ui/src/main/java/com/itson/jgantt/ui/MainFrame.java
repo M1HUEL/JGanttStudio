@@ -46,6 +46,8 @@ public final class MainFrame extends JFrame {
         this.controller = controller;
         this.tablePanel = new TaskTablePanel(editListener(), this::updateChart);
         this.chartPanel = new GanttChartPanel();
+        chartPanel.setDragListener((taskId, newStart, newEnd) ->
+                runSafely(() -> controller.changeDates(taskId, newStart, newEnd)));
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
