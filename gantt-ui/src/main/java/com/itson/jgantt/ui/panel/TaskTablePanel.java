@@ -8,6 +8,7 @@ import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Polygon;
+import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
@@ -25,6 +26,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
+import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
@@ -33,6 +35,8 @@ import com.itson.jgantt.app.dto.TaskDto;
 import com.itson.jgantt.domain.valueobject.TaskId;
 import com.itson.jgantt.ui.model.OutlineTaskTableModel;
 import com.itson.jgantt.ui.model.TaskEditListener;
+import com.itson.jgantt.ui.util.DatePicker;
+import com.itson.jgantt.ui.util.Messages;
 import com.itson.jgantt.ui.util.TaskOutline;
 import com.itson.jgantt.ui.util.UiFonts;
 
@@ -68,8 +72,8 @@ public final class TaskTablePanel extends JPanel {
 		table.setDefaultRenderer(Object.class, new ZebraRenderer());
 
 		configureColumn(OutlineTaskTableModel.COL_NAME, 240, new NameRenderer(), new DefaultCellEditor(new JTextField()));
-		configureColumn(OutlineTaskTableModel.COL_START, 95, null, new DateCellEditor());
-		configureColumn(OutlineTaskTableModel.COL_END, 95, null, new DateCellEditor());
+		configureColumn(OutlineTaskTableModel.COL_START, 95, new DateRenderer(), new DateCellEditor());
+		configureColumn(OutlineTaskTableModel.COL_END, 95, new DateRenderer(), new DateCellEditor());
 		configureColumn(OutlineTaskTableModel.COL_LENGTH, 60, new LeftAlignedRenderer(), null);
 		configureColumn(OutlineTaskTableModel.COL_PROGRESS, 80, new ProgressRenderer(), new ProgressCellEditor());
 
@@ -245,6 +249,25 @@ public final class TaskTablePanel extends JPanel {
 
 	}
 
+	private static final class DateRenderer extends DefaultTableCellRenderer {
+
+		private DateRenderer() {
+			setHorizontalAlignment(JLabel.LEFT);
+			setFont(UiFonts.regular(13));
+		}
+
+		@Override
+		public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+			boolean hasFocus, int row, int column) {
+			String text = value instanceof LocalDate date ? Messages.formatDate(date) : "";
+			Component cell = super.getTableCellRendererComponent(
+				table, text, isSelected, hasFocus, row, column);
+			paintZebra(this, table, row, isSelected);
+			return cell;
+		}
+
+	}
+
 	private static final class ProgressRenderer extends JPanel implements TableCellRenderer {
 
 		private float progress;
@@ -319,9 +342,33 @@ public final class TaskTablePanel extends JPanel {
 		}
 
 		@Override
+		public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected,
+			int row, int column) {
+			Component component = super.getTableCellEditorComponent(
+				table, value, isSelected, row, column);
+			if (value instanceof LocalDate date) {
+				((JTextField) getComponent()).setText(Messages.formatDate(date));
+				SwingUtilities.invokeLater(() -> showPicker(table, row, column, date));
+			}
+			return component;
+		}
+
+		private void showPicker(JTable table, int row, int column, LocalDate initial) {
+			Rectangle cell = table.getCellRect(row, column, true);
+			Point cellLocation = cell.getLocation();
+			Point pickerAt = SwingUtilities.convertPoint(table, cellLocation, getComponent());
+			DatePicker.showPopup(getComponent(), pickerAt.x, pickerAt.y + cell.height, initial,
+				date -> {
+					((JTextField) getComponent()).setText(Messages.formatDate(date));
+					stopCellEditing();
+				});
+		}
+
+		@Override
 		public boolean stopCellEditing() {
+			DatePicker.closePopup();
 			try {
-				LocalDate.parse(((JTextField) getComponent()).getText().trim());
+				Messages.parseDate(((JTextField) getComponent()).getText());
 			} catch (DateTimeParseException ex) {
 				return false;
 			}
@@ -329,8 +376,14 @@ public final class TaskTablePanel extends JPanel {
 		}
 
 		@Override
+		public void cancelCellEditing() {
+			DatePicker.closePopup();
+			super.cancelCellEditing();
+		}
+
+		@Override
 		public Object getCellEditorValue() {
-			return LocalDate.parse(((JTextField) getComponent()).getText().trim());
+			return Messages.parseDate(((JTextField) getComponent()).getText());
 		}
 
 	}

@@ -10,8 +10,6 @@ import java.awt.Insets;
 import java.awt.Window;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.time.format.FormatStyle;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -32,6 +30,7 @@ import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerDateModel;
 import javax.swing.border.EmptyBorder;
 
+import com.itson.jgantt.ui.util.DatePicker;
 import com.itson.jgantt.ui.util.Messages;
 
 public final class NonWorkingDaysDialog {
@@ -62,17 +61,19 @@ public final class NonWorkingDaysDialog {
 				JLabel label = (JLabel) super.getListCellRendererComponent(
 					list, value, index, isSelected, cellHasFocus);
 				if (value instanceof LocalDate date) {
-					DateTimeFormatter formatter = DateTimeFormatter
-						.ofLocalizedDate(FormatStyle.MEDIUM)
-						.withLocale(Messages.locale());
-					label.setText(formatter.format(date));
+					label.setText(Messages.formatDate(date));
 				}
 				return label;
 			}
 		});
 
 		dateSpinner = new JSpinner(new SpinnerDateModel());
-		dateSpinner.setEditor(new JSpinner.DateEditor(dateSpinner, datePattern()));
+		dateSpinner.setEditor(new JSpinner.DateEditor(dateSpinner, Messages.datePattern()));
+
+		JButton pickButton = styleButton("\u2026");
+		pickButton.setToolTipText(Messages.get("dialog.nonWorkingDays.pick"));
+		pickButton.addActionListener(e -> DatePicker.showPopup(pickButton, 0, pickButton.getHeight(),
+			spinnerDate(), date -> dateSpinner.setValue(toDate(date))));
 
 		JButton addButton = styleButton(Messages.get("dialog.nonWorkingDays.add"));
 		addButton.addActionListener(e -> addSpinnerDate());
@@ -103,6 +104,7 @@ public final class NonWorkingDaysDialog {
 		JPanel inputPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
 		inputPanel.add(new JLabel(Messages.get("dialog.nonWorkingDays.date") + " "));
 		inputPanel.add(dateSpinner);
+		inputPanel.add(pickButton);
 		inputPanel.add(addButton);
 
 		JPanel listPanel = new JPanel(new BorderLayout());
@@ -137,9 +139,17 @@ public final class NonWorkingDaysDialog {
 		return dialog.accepted ? Optional.of(dialog.result) : Optional.empty();
 	}
 
-	private void addSpinnerDate() {
+	private LocalDate spinnerDate() {
 		Date date = (Date) dateSpinner.getValue();
-		LocalDate day = date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+		return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+	}
+
+	private static Date toDate(LocalDate day) {
+		return Date.from(day.atStartOfDay(ZoneId.systemDefault()).toInstant());
+	}
+
+	private void addSpinnerDate() {
+		LocalDate day = spinnerDate();
 		if (!listModel.contains(day)) {
 			listModel.addElement(day);
 		}
@@ -167,10 +177,6 @@ public final class NonWorkingDaysDialog {
 			}
 		});
 		return button;
-	}
-
-	private static String datePattern() {
-		return Messages.locale().getLanguage().startsWith("es") ? "dd/MM/yyyy" : "MM/dd/yyyy";
 	}
 
 }

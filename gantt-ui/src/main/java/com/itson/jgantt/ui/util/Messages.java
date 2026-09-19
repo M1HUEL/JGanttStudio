@@ -1,5 +1,7 @@
 package com.itson.jgantt.ui.util;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
@@ -29,6 +31,22 @@ public final class Messages {
 		} catch (MissingResourceException ex) {
 			return key;
 		}
+	}
+
+	public static String formatDate(LocalDate date) {
+		return dateFormatter().format(date);
+	}
+
+	public static LocalDate parseDate(String text) {
+		return LocalDate.parse(text.trim(), dateFormatter());
+	}
+
+	public static DateTimeFormatter dateFormatter() {
+		return DateTimeFormatter.ofPattern(datePattern()).withLocale(locale);
+	}
+
+	public static String datePattern() {
+		return locale.getLanguage().startsWith("es") ? "dd/MM/yyyy" : "MM/dd/yyyy";
 	}
 
 }
