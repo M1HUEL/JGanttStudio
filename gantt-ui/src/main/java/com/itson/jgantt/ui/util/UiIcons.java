@@ -170,6 +170,16 @@ public final class UiIcons {
 		});
 	}
 
+	public static Icon table() {
+		return shape(g -> {
+			g.setStroke(stroke());
+			g.draw(new RoundRectangle2D.Double(1.75, 2.5, 12.5, 11.0, 2.2, 2.2));
+			g.draw(new Line2D.Double(1.75, 6.0, 14.25, 6.0));
+			g.draw(new Line2D.Double(1.75, 9.5, 14.25, 9.5));
+			g.draw(new Line2D.Double(6.4, 6.0, 6.4, 13.5));
+		});
+	}
+
 	public static Icon calendar() {
 		return shape(g -> {
 			g.setStroke(stroke());

@@ -29,6 +29,7 @@ class UiIconsTest {
 				UiIcons.unlink(),
 				UiIcons.zoomIn(),
 				UiIcons.zoomOut(),
+				UiIcons.table(),
 				UiIcons.calendar()}) {
 				assertNotNull(icon);
 				assertEquals(16, icon.getIconWidth());

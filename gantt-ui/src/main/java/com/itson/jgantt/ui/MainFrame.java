@@ -24,6 +24,7 @@ import java.util.Set;
 import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -36,6 +37,7 @@ import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTextField;
+import javax.swing.JToggleButton;
 import javax.swing.JToolBar;
 import javax.swing.KeyStroke;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -62,6 +64,7 @@ public final class MainFrame extends JFrame {
 
 	private static final Color BUTTON_BG = new Color(0xFFFFFF);
 	private static final Color BUTTON_HOVER_BG = new Color(0xE8EEF7);
+	private static final Color BUTTON_SELECTED_BG = new Color(0xD6E4FB);
 
 	private final ProjectController controller;
 	private final TaskTablePanel tablePanel;
@@ -77,6 +80,12 @@ public final class MainFrame extends JFrame {
 	private JButton deleteButton;
 	private JButton linkButton;
 	private JButton unlinkButton;
+	private JToggleButton toggleTableButton;
+	private JCheckBoxMenuItem showTableItem;
+	private JSplitPane splitPane;
+
+	private boolean tableVisible = true;
+	private int lastDividerLocation = 560;
 
 	private JMenuItem addSubtaskItem;
 	private JMenuItem deleteItem;
@@ -175,6 +184,11 @@ public final class MainFrame extends JFrame {
 			e -> chartPanel.setDayWidth(Math.max(6, chartPanel.dayWidth() - 4))));
 		viewMenu.add(menuItem(Messages.get("action.resetZoom"),
 			KeyStroke.getKeyStroke(KeyEvent.VK_0, InputEvent.CTRL_DOWN_MASK), e -> chartPanel.setDayWidth(18)));
+		viewMenu.addSeparator();
+		showTableItem = new JCheckBoxMenuItem(Messages.get("action.toggleTable"), tableVisible);
+		showTableItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, InputEvent.CTRL_DOWN_MASK));
+		showTableItem.addActionListener(e -> setTableVisible(showTableItem.isSelected()));
+		viewMenu.add(showTableItem);
 		menuBar.add(viewMenu);
 
 		JMenu exportMenu = new JMenu(Messages.get("menu.export"));
@@ -268,6 +282,11 @@ public final class MainFrame extends JFrame {
 		toolbar.add(iconButton(UiIcons.zoomIn(), Messages.get("action.zoomIn"),
 			e -> chartPanel.setDayWidth(Math.min(80, chartPanel.dayWidth() + 4))));
 
+		toolbar.addSeparator();
+		toggleTableButton = toggleIconButton(UiIcons.table(), Messages.get("toolbar.toggleTable"), tableVisible,
+			e -> setTableVisible(toggleTableButton.isSelected()));
+		toolbar.add(toggleTableButton);
+
 		return toolbar;
 	}
 
@@ -288,15 +307,62 @@ public final class MainFrame extends JFrame {
 		tablePanel.getVerticalScrollBar().setModel(chartScroll.getVerticalScrollBar().getModel());
 
 		JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, tablePanel, chartScroll);
-		split.setDividerLocation(560);
+		split.setDividerLocation(lastDividerLocation);
 		split.setResizeWeight(0.28);
+		splitPane = split;
 		return split;
+	}
+
+	private void setTableVisible(boolean visible) {
+		if (splitPane == null || visible == tableVisible) {
+			syncTableToggle(visible);
+			return;
+		}
+		tableVisible = visible;
+		if (visible) {
+			splitPane.getLeftComponent().setVisible(true);
+			splitPane.setDividerSize(6);
+			splitPane.setDividerLocation(lastDividerLocation);
+		} else {
+			lastDividerLocation = splitPane.getDividerLocation();
+			splitPane.getLeftComponent().setVisible(false);
+			splitPane.setDividerSize(0);
+			splitPane.setDividerLocation(0);
+		}
+		syncTableToggle(visible);
+		splitPane.revalidate();
+		splitPane.repaint();
+	}
+
+	private void syncTableToggle(boolean visible) {
+		if (showTableItem != null && showTableItem.isSelected() != visible) {
+			showTableItem.setSelected(visible);
+		}
+		if (toggleTableButton != null && toggleTableButton.isSelected() != visible) {
+			toggleTableButton.setSelected(visible);
+		}
 	}
 
 	private JButton iconButton(javax.swing.Icon icon, String tooltip, ActionListener action) {
 		JButton button = new JButton(icon);
-		button.setToolTipText(tooltip);
 		button.addActionListener(action);
+		styleIconButton(button, tooltip);
+		return button;
+	}
+
+	private JToggleButton toggleIconButton(javax.swing.Icon icon, String tooltip, boolean selected,
+		ActionListener action) {
+		JToggleButton button = new JToggleButton(icon);
+		button.setSelected(selected);
+		button.addActionListener(action);
+		styleIconButton(button, tooltip);
+		button.setBackground(selected ? BUTTON_SELECTED_BG : BUTTON_BG);
+		button.addItemListener(e -> button.setBackground(button.isSelected() ? BUTTON_SELECTED_BG : BUTTON_BG));
+		return button;
+	}
+
+	private void styleIconButton(javax.swing.AbstractButton button, String tooltip) {
+		button.setToolTipText(tooltip);
 		button.setFocusable(false);
 		button.setMargin(new Insets(4, 6, 4, 6));
 		button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -307,15 +373,18 @@ public final class MainFrame extends JFrame {
 
 			@Override
 			public void mouseEntered(MouseEvent e) {
-				button.setBackground(BUTTON_HOVER_BG);
+				if (!button.isSelected()) {
+					button.setBackground(BUTTON_HOVER_BG);
+				}
 			}
 
 			@Override
 			public void mouseExited(MouseEvent e) {
-				button.setBackground(BUTTON_BG);
+				if (!button.isSelected()) {
+					button.setBackground(BUTTON_BG);
+				}
 			}
 		});
-		return button;
 	}
 
 	private void newProject() {
