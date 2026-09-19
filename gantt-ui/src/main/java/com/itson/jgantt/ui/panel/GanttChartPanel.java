@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Set;
 
 import javax.swing.JComponent;
+import javax.swing.ToolTipManager;
 
 import com.itson.jgantt.app.dto.TaskDto;
 import com.itson.jgantt.app.dto.TaskLinkDto;
@@ -33,21 +34,22 @@ public final class GanttChartPanel extends JComponent {
     public static final int HEADER_HEIGHT = 44;
     public static final int ROW_HEIGHT = TaskTablePanel.ROW_HEIGHT;
 
-    private static final Color BAR_COLOR = new Color(0x4A90D9);
-    private static final Color PROGRESS_COLOR = new Color(0x2E6DA4);
-    private static final Color MILESTONE_COLOR = new Color(0xE67E22);
-    private static final Color LINK_COLOR = new Color(0x555555);
-    private static final Color GRID_COLOR = new Color(0xE8E8E8);
-    private static final Color HEADER_COLOR = new Color(0xE0E7EF);
-    private static final Color TODAY_COLOR = new Color(0xC0392B);
-    private static final Color TEXT_COLOR = new Color(0x333333);
-    private static final Color WEEKEND_COLOR = new Color(0xF7F7F7);
-    private static final Color SELECTION_COLOR = new Color(46, 109, 164, 38);
-    private static final Color SELECTED_BAR_COLOR = new Color(0x1B4F8A);
+    private static final Color BAR_COLOR = new Color(0x3B82F6);
+    private static final Color PROGRESS_COLOR = new Color(0x1D4ED8);
+    private static final Color MILESTONE_COLOR = new Color(0xF59E0B);
+    private static final Color LINK_COLOR = new Color(0x64748B);
+    private static final Color GRID_COLOR = new Color(0xE2E8F0);
+    private static final Color HEADER_COLOR = new Color(0xEEF2F7);
+    private static final Color TODAY_COLOR = new Color(0xEF4444);
+    private static final Color TEXT_COLOR = new Color(0x334155);
+    private static final Color WEEKEND_COLOR = new Color(0xFAFAFB);
+    private static final Color SELECTION_COLOR = new Color(59, 130, 246, 38);
+    private static final Color SELECTED_BAR_COLOR = new Color(0x1E3A8A);
+    private static final Color ZEBRA_COLOR = new Color(0xF5F7FB);
 
     private static final DateTimeFormatter MONTH_FORMAT = DateTimeFormatter.ofPattern("MMM yyyy");
-    private static final Font HEADER_FONT = new Font(Font.SANS_SERIF, Font.BOLD, 11);
-    private static final Font LABEL_FONT = new Font(Font.SANS_SERIF, Font.PLAIN, 11);
+    private static final Font HEADER_FONT = new Font(Font.SANS_SERIF, Font.BOLD, 12);
+    private static final Font LABEL_FONT = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
 
     private final TimeScale timeScale = new TimeScale();
     private List<TaskDto> allTasks = List.of();
@@ -69,6 +71,24 @@ public final class GanttChartPanel extends JComponent {
         TaskDragHandler handler = new TaskDragHandler();
         addMouseListener(handler);
         addMouseMotionListener(handler);
+        ToolTipManager.sharedInstance().registerComponent(this);
+    }
+
+    @Override
+    public String getToolTipText(MouseEvent event) {
+        int row = rowAt(event.getY());
+        if (row < 0) {
+            return null;
+        }
+        TaskDto task = visible.get(row);
+        if (event.getY() < HEADER_HEIGHT + ROW_HEIGHT) {
+            long days = ChronoUnit.DAYS.between(task.start(), task.end()) + 1;
+            String prefix = task.milestone() ? "Milestone" : "Task";
+            return String.format(
+                    "<html><b>%s</b> (%s)<br>%s to %s &middot; %d day%s</html>",
+                    task.name(), prefix, task.start(), task.end(), days, days == 1 ? "" : "s");
+        }
+        return null;
     }
 
     public void setDragListener(TaskDragListener dragListener) {
@@ -120,6 +140,7 @@ public final class GanttChartPanel extends JComponent {
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         paintBackground(g2);
         paintWeekends(g2);
+        paintZebraBands(g2);
         paintGrid(g2);
         paintToday(g2);
         paintHeader(g2);
@@ -153,6 +174,14 @@ public final class GanttChartPanel extends JComponent {
         g.fillRect(0, 0, getWidth(), getHeight());
     }
 
+    private void paintZebraBands(Graphics2D g) {
+        g.setColor(ZEBRA_COLOR);
+        for (int index = 1; index < visible.size(); index += 2) {
+            int y = HEADER_HEIGHT + index * ROW_HEIGHT;
+            g.fillRect(0, y, getWidth(), ROW_HEIGHT);
+        }
+    }
+
     private void paintWeekends(Graphics2D g) {
         g.setColor(WEEKEND_COLOR);
         for (LocalDate date = rangeStart; !date.isAfter(rangeEnd); date = date.plusDays(1)) {
@@ -183,6 +212,10 @@ public final class GanttChartPanel extends JComponent {
             int x = timeScale.xOf(date);
             g.drawLine(x, HEADER_HEIGHT, x, getHeight());
         }
+        for (int index = 0; index <= visible.size(); index++) {
+            int y = HEADER_HEIGHT + index * ROW_HEIGHT;
+            g.drawLine(0, y, getWidth(), y);
+        }
         g.setColor(LINK_COLOR);
         g.drawLine(0, HEADER_HEIGHT, getWidth(), HEADER_HEIGHT);
     }
@@ -194,7 +227,8 @@ public final class GanttChartPanel extends JComponent {
         }
         int x = timeScale.xOf(today);
         g.setColor(TODAY_COLOR);
-        g.setStroke(new BasicStroke(2f));
+        g.setStroke(new BasicStroke(1.5f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER,
+                10f, new float[] {4f, 4f}, 0f));
         g.drawLine(x, HEADER_HEIGHT, x, getHeight());
         g.setStroke(new BasicStroke(1f));
     }

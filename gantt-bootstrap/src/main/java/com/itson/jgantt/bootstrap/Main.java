@@ -1,12 +1,15 @@
 package com.itson.jgantt.bootstrap;
 
+import java.awt.Font;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
+import javax.swing.plaf.FontUIResource;
 
+import com.formdev.flatlaf.FlatLightLaf;
 import com.itson.jgantt.app.service.LinkService;
 import com.itson.jgantt.app.service.ProjectService;
 import com.itson.jgantt.app.service.TaskScheduler;
@@ -25,11 +28,7 @@ public final class Main {
     }
 
     private static void start() {
-        try {
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (Exception ignored) {
-            // keep default look and feel
-        }
+        installLookAndFeel();
 
         SQLiteProjectRepository repository = new SQLiteProjectRepository(databasePath());
         TaskScheduler scheduler = new TaskScheduler();
@@ -41,6 +40,19 @@ public final class Main {
         MainFrame frame = new MainFrame(controller);
         frame.initializeProject();
         frame.setVisible(true);
+    }
+
+    private static void installLookAndFeel() {
+        try {
+            UIManager.setLookAndFeel(new FlatLightLaf());
+            UIManager.put("defaultFont", new FontUIResource(Font.SANS_SERIF, Font.PLAIN, 13));
+        } catch (Exception ignored) {
+            try {
+                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            } catch (Exception alsoIgnored) {
+                // keep default look and feel
+            }
+        }
     }
 
     private static String databasePath() {
