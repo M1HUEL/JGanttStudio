@@ -1,6 +1,5 @@
 package com.itson.jgantt.bootstrap;
 
-import java.awt.Font;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -17,6 +16,7 @@ import com.itson.jgantt.app.service.TaskService;
 import com.itson.jgantt.infrastructure.persistence.SQLiteProjectRepository;
 import com.itson.jgantt.ui.MainFrame;
 import com.itson.jgantt.ui.controller.ProjectController;
+import com.itson.jgantt.ui.util.UiFonts;
 
 public final class Main {
 
@@ -43,9 +43,10 @@ public final class Main {
     }
 
     private static void installLookAndFeel() {
+        UiFonts.register();
         try {
             UIManager.setLookAndFeel(new FlatLightLaf());
-            UIManager.put("defaultFont", new FontUIResource(Font.SANS_SERIF, Font.PLAIN, 13));
+            UIManager.put("defaultFont", new FontUIResource(UiFonts.regular(13)));
         } catch (Exception ignored) {
             try {
                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());

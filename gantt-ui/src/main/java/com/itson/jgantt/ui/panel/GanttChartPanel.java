@@ -28,6 +28,7 @@ import com.itson.jgantt.app.dto.TaskLinkDto;
 import com.itson.jgantt.domain.valueobject.TaskId;
 import com.itson.jgantt.ui.model.TaskDragListener;
 import com.itson.jgantt.ui.util.TimeScale;
+import com.itson.jgantt.ui.util.UiFonts;
 
 public final class GanttChartPanel extends JComponent {
 
@@ -48,8 +49,8 @@ public final class GanttChartPanel extends JComponent {
     private static final Color ZEBRA_COLOR = new Color(0xF5F7FB);
 
     private static final DateTimeFormatter MONTH_FORMAT = DateTimeFormatter.ofPattern("MMM yyyy");
-    private static final Font HEADER_FONT = new Font(Font.SANS_SERIF, Font.BOLD, 12);
-    private static final Font LABEL_FONT = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
+    private static final Font HEADER_FONT = UiFonts.semiBold(12);
+    private static final Font LABEL_FONT = UiFonts.regular(12);
 
     private final TimeScale timeScale = new TimeScale();
     private List<TaskDto> allTasks = List.of();

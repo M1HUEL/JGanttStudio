@@ -37,7 +37,7 @@ import com.itson.jgantt.ui.util.TaskOutline;
 
 public final class TaskTablePanel extends JPanel {
 
-	public static final int ROW_HEIGHT = 28;
+	public static final int ROW_HEIGHT = 32;
 
 	private static final Color ZEBRA_COLOR = new Color(0xF5F7FB);
 	private static final Color PROGRESS_TRACK_COLOR = new Color(0xE3E7EC);

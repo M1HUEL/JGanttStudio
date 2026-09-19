@@ -23,4 +23,13 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>font</directory>
+                <targetPath>font</targetPath>
+            </resource>
+        </resources>
+    </build>
 </project>
