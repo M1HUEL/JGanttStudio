@@ -5,7 +5,6 @@ import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
-import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.FocusAdapter;
@@ -71,6 +70,8 @@ public final class MainFrame extends JFrame {
 	private static final Color BUTTON_BG = new Color(0xFFFFFF);
 	private static final Color BUTTON_HOVER_BG = new Color(0xE8EEF7);
 	private static final Color BUTTON_SELECTED_BG = new Color(0xD6E4FB);
+	private static final int TOOLBAR_ICON_SIZE = 20;
+	private static final int TOOLBAR_BUTTON_SIZE = 38;
 
 	private final ProjectController controller;
 	private final TaskTablePanel tablePanel;
@@ -356,7 +357,7 @@ public final class MainFrame extends JFrame {
 	}
 
 	private JButton iconButton(javax.swing.Icon icon, String tooltip, ActionListener action) {
-		JButton button = new JButton(icon);
+		JButton button = new JButton(UiIcons.scaled(icon, TOOLBAR_ICON_SIZE));
 		button.addActionListener(action);
 		styleIconButton(button, tooltip);
 		return button;
@@ -364,7 +365,7 @@ public final class MainFrame extends JFrame {
 
 	private JToggleButton toggleIconButton(javax.swing.Icon icon, String tooltip, boolean selected,
 		ActionListener action) {
-		JToggleButton button = new JToggleButton(icon);
+		JToggleButton button = new JToggleButton(UiIcons.scaled(icon, TOOLBAR_ICON_SIZE));
 		button.setSelected(selected);
 		button.addActionListener(action);
 		styleIconButton(button, tooltip);
@@ -376,11 +377,10 @@ public final class MainFrame extends JFrame {
 	private void styleIconButton(javax.swing.AbstractButton button, String tooltip) {
 		button.setToolTipText(tooltip);
 		button.setFocusable(false);
-		button.setMargin(new Insets(4, 6, 4, 6));
 		button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		button.putClientProperty("JButton.buttonType", "square");
 		button.setBackground(BUTTON_BG);
-		button.setBorder(BorderFactory.createEmptyBorder(3, 5, 3, 5));
+		button.setPreferredSize(new Dimension(TOOLBAR_BUTTON_SIZE, TOOLBAR_BUTTON_SIZE));
 		button.addMouseListener(new MouseAdapter() {
 
 			@Override
@@ -545,13 +545,21 @@ public final class MainFrame extends JFrame {
 	}
 
 	private void addMilestone() {
+		TaskId parentId = null;
+		if (controller.hasProject()) {
+			List<TaskId> selected = tablePanel.getSelectedTaskIds();
+			if (!selected.isEmpty() && !controller.current().taskOf(selected.getFirst()).milestone()) {
+				parentId = selected.getFirst();
+			}
+		}
+		TaskId targetParent = parentId;
 		String name = JOptionPane.showInputDialog(this,
 			Messages.get("dialog.milestone.message"),
 			Messages.get("dialog.milestone.title"), JOptionPane.QUESTION_MESSAGE);
 		if (name == null || name.isBlank()) {
 			return;
 		}
-		runSafely(() -> controller.addMilestone(name));
+		runSafely(() -> controller.addMilestone(name, targetParent));
 	}
 
 	private void deleteSelection() {

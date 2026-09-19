@@ -29,6 +29,44 @@ class TaskServiceTest {
 	private final LinkService linkService = new LinkService(repository, scheduler);
 
 	@Test
+	void addSubtaskExpandsParentRange() {
+		ProjectId projectId = projectService.create("Build").id();
+		ProjectDto root = taskService.addTask(projectId,
+			new AddTaskRequest("Phase", START.plusDays(8), START.plusDays(10), TaskType.TASK, null));
+		TaskId rootId = root.tasks().getFirst().id();
+
+		ProjectDto result = taskService.addTask(projectId,
+			new AddTaskRequest("Early", START.plusDays(7), START.plusDays(7), TaskType.TASK, rootId));
+
+		TaskDto parent = result.tasks().stream()
+			.filter(t -> t.id().equals(rootId))
+			.findFirst().orElseThrow();
+		assertEquals(START.plusDays(7), parent.start());
+		assertEquals(START.plusDays(10), parent.end());
+	}
+
+	@Test
+	void changeDatesExpandsParentRange() {
+		ProjectId projectId = projectService.create("Build").id();
+		ProjectDto root = taskService.addTask(projectId,
+			new AddTaskRequest("Phase", START.plusDays(8), START.plusDays(12), TaskType.TASK, null));
+		TaskId rootId = root.tasks().getFirst().id();
+		ProjectDto added = taskService.addTask(projectId,
+			new AddTaskRequest("Child", START.plusDays(9), START.plusDays(10), TaskType.TASK, rootId));
+		TaskId childId = added.tasks().stream()
+			.filter(t -> t.name().equals("Child"))
+			.findFirst().orElseThrow().id();
+
+		ProjectDto result = taskService.changeDates(projectId, childId, START.plusDays(5), START.plusDays(14));
+
+		TaskDto parent = result.tasks().stream()
+			.filter(t -> t.id().equals(rootId))
+			.findFirst().orElseThrow();
+		assertEquals(START.plusDays(5), parent.start());
+		assertEquals(START.plusDays(14), parent.end());
+	}
+
+	@Test
 	void addTaskPersistsTask() {
 		ProjectId projectId = projectService.create("Build").id();
 
@@ -42,6 +80,20 @@ class TaskServiceTest {
 		assertEquals(START.plusDays(4), task.end());
 		assertEquals(TaskType.TASK, task.type());
 		assertEquals(0, task.outlineLevel());
+	}
+
+	@Test
+	void changeDatesOnMilestoneForcesPointRange() {
+		ProjectId projectId = projectService.create("Build").id();
+		ProjectDto added = taskService.addTask(projectId,
+			new AddTaskRequest("Go live", START.plusDays(10), START.plusDays(10), TaskType.MILESTONE, null));
+		TaskId milestoneId = added.tasks().getFirst().id();
+
+		ProjectDto result = taskService.changeDates(projectId, milestoneId, START.plusDays(12), START.plusDays(10));
+
+		TaskDto milestone = result.tasks().getFirst();
+		assertEquals(START.plusDays(12), milestone.start());
+		assertEquals(START.plusDays(12), milestone.end());
 	}
 
 	@Test

@@ -261,6 +261,62 @@ class ProjectTest {
 		assertFalse(project.countMilestones() > 1);
 	}
 
+	@Test
+	void syncSummaryRangesKeepsParentRangeWhenChildrenFitInside() {
+		Task parent = Task.builder()
+			.id(TaskId.random())
+			.name("Parent")
+			.startsAt(START.plusDays(8))
+			.endsAt(START.plusDays(12))
+			.build();
+		Task child = Task.builder()
+			.id(TaskId.random())
+			.name("Child")
+			.startsAt(START.plusDays(9))
+			.endsAt(START.plusDays(10))
+			.parent(parent.id())
+			.build();
+		Project project = new Project(ProjectId.random(), "Build", List.of(parent, child), List.of());
+
+		project.syncSummaryRanges();
+
+		Task synced = project.find(parent.id()).orElseThrow();
+		assertEquals(START.plusDays(8), synced.range().start());
+		assertEquals(START.plusDays(12), synced.range().end());
+	}
+
+	@Test
+	void syncSummaryRangesIgnoresMilestoneChildren() {
+		Task parent = Task.builder()
+			.id(TaskId.random())
+			.name("Parent")
+			.startsAt(START.plusDays(8))
+			.endsAt(START.plusDays(12))
+			.build();
+		Task child = Task.builder()
+			.id(TaskId.random())
+			.name("Work")
+			.startsAt(START.plusDays(9))
+			.endsAt(START.plusDays(10))
+			.parent(parent.id())
+			.build();
+		Task milestone = Task.builder()
+			.id(TaskId.random())
+			.name("Delivery")
+			.startsAt(START.plusDays(20))
+			.endsAt(START.plusDays(20))
+			.type(TaskType.MILESTONE)
+			.parent(parent.id())
+			.build();
+		Project project = new Project(ProjectId.random(), "Build", List.of(parent, child, milestone), List.of());
+
+		project.syncSummaryRanges();
+
+		Task synced = project.find(parent.id()).orElseThrow();
+		assertEquals(START.plusDays(8), synced.range().start());
+		assertEquals(START.plusDays(12), synced.range().end());
+	}
+
 	private static Task task(String name) {
 		return Task.builder()
 			.id(TaskId.random())
@@ -268,6 +324,71 @@ class ProjectTest {
 			.startsAt(START)
 			.endsAt(START.plusDays(4))
 			.build();
+	}
+
+	@Test
+	void syncSummaryRangesExpandsParentToCoverChildren() {
+		Task parent = Task.builder()
+			.id(TaskId.random())
+			.name("Parent")
+			.startsAt(START.plusDays(8))
+			.endsAt(START.plusDays(10))
+			.build();
+		Task childEarly = Task.builder()
+			.id(TaskId.random())
+			.name("Early")
+			.startsAt(START.plusDays(7))
+			.endsAt(START.plusDays(7))
+			.parent(parent.id())
+			.build();
+		Task childLate = Task.builder()
+			.id(TaskId.random())
+			.name("Late")
+			.startsAt(START.plusDays(9))
+			.endsAt(START.plusDays(14))
+			.parent(parent.id())
+			.build();
+		Project project = new Project(ProjectId.random(), "Build", List.of(parent, childEarly, childLate), List.of());
+
+		project.syncSummaryRanges();
+
+		Task synced = project.find(parent.id()).orElseThrow();
+		assertEquals(START.plusDays(7), synced.range().start());
+		assertEquals(START.plusDays(14), synced.range().end());
+	}
+
+	@Test
+	void syncSummaryRangesRecursesThroughNestedGroups() {
+		Task grandParent = Task.builder()
+			.id(TaskId.random())
+			.name("Grand")
+			.startsAt(START.plusDays(8))
+			.endsAt(START.plusDays(10))
+			.build();
+		Task parent = Task.builder()
+			.id(TaskId.random())
+			.name("Parent")
+			.startsAt(START.plusDays(5))
+			.endsAt(START.plusDays(6))
+			.parent(grandParent.id())
+			.build();
+		Task child = Task.builder()
+			.id(TaskId.random())
+			.name("Child")
+			.startsAt(START.plusDays(1))
+			.endsAt(START.plusDays(12))
+			.parent(parent.id())
+			.build();
+		Project project = new Project(ProjectId.random(), "Build", List.of(grandParent, parent, child), List.of());
+
+		project.syncSummaryRanges();
+
+		Task syncedParent = project.find(parent.id()).orElseThrow();
+		Task syncedGrand = project.find(grandParent.id()).orElseThrow();
+		assertEquals(START.plusDays(1), syncedParent.range().start());
+		assertEquals(START.plusDays(12), syncedParent.range().end());
+		assertEquals(START.plusDays(1), syncedGrand.range().start());
+		assertEquals(START.plusDays(12), syncedGrand.range().end());
 	}
 
 }

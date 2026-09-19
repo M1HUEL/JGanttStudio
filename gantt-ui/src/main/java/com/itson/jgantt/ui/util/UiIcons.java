@@ -225,6 +225,36 @@ public final class UiIcons {
 		g.draw(new Line2D.Double(8.0, 5.75, 8.0, 10.25));
 	}
 
+	public static Icon scaled(final Icon icon, final int size) {
+		if (icon == null) {
+			return null;
+		}
+		return new Icon() {
+
+			@Override
+			public int getIconWidth() {
+				return size;
+			}
+
+			@Override
+			public int getIconHeight() {
+				return size;
+			}
+
+			@Override
+			public void paintIcon(Component component, Graphics graphics, int x, int y) {
+				Graphics2D g2 = (Graphics2D) graphics.create();
+				g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+				g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
+				g2.translate(x, y);
+				double scale = size / (double) SIZE;
+				g2.scale(scale, scale);
+				icon.paintIcon(component, g2, 0, 0);
+				g2.dispose();
+			}
+		};
+	}
+
 	private static Icon shape(final IconPainter painter) {
 		return new Icon() {
 

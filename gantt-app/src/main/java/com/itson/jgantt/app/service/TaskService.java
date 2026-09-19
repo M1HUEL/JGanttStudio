@@ -47,7 +47,13 @@ public final class TaskService {
 
 	public ProjectDto changeDates(ProjectId projectId, TaskId taskId, LocalDate newStart, LocalDate newEnd) {
 		Project project = load(projectId);
-		project.updateTask(findOrThrow(project, taskId).withRange(new DateRange(newStart, newEnd)));
+		Task task = findOrThrow(project, taskId);
+		if (task.isMilestone()) {
+			LocalDate target = task.range().start().equals(newEnd) ? newStart : newEnd;
+			newStart = target;
+			newEnd = target;
+		}
+		project.updateTask(task.withRange(new DateRange(newStart, newEnd)));
 		scheduler.reschedule(project, taskId);
 		return save(project);
 	}
@@ -82,6 +88,7 @@ public final class TaskService {
 	}
 
 	private ProjectDto save(Project project) {
+		project.syncSummaryRanges();
 		repository.save(project);
 		return ProjectMapper.toDto(project);
 	}

@@ -17,8 +17,10 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import javax.swing.JComponent;
@@ -39,9 +41,22 @@ public final class GanttChartPanel extends JComponent {
 
 	private static final int MONTH_BAND_HEIGHT = 20;
 
-	private static final Color BAR_COLOR = new Color(0x3B82F6);
-	private static final Color PROGRESS_COLOR = new Color(0x1D4ED8);
-	private static final Color MILESTONE_COLOR = new Color(0xF59E0B);
+	private static final Color[] TASK_PALETTE = {
+		new Color(0x3B82F6),
+		new Color(0x6366F1),
+		new Color(0x8B5CF6),
+		new Color(0xA855F7),
+		new Color(0xD946EF),
+		new Color(0xEC4899),
+		new Color(0xF43F5E),
+		new Color(0xEF4444),
+		new Color(0xF97316),
+		new Color(0xF59E0B),
+		new Color(0x22C55E),
+		new Color(0x10B981),
+		new Color(0x14B8A6),
+		new Color(0x06B6D4)
+	};
 	private static final Color LINK_COLOR = new Color(0x64748B);
 	private static final Color GRID_COLOR = new Color(0xE2E8F0);
 	private static final Color HEADER_COLOR = new Color(0xEEF2F7);
@@ -366,6 +381,22 @@ public final class GanttChartPanel extends JComponent {
 
 	private void paintBars(Graphics2D g) {
 		g.setFont(LABEL_FONT);
+		Map<TaskId, TaskDto> byId = new HashMap<>();
+		Set<TaskId> parentIds = new HashSet<>();
+		allTasks.forEach(task -> {
+			byId.put(task.id(), task);
+			if (task.parentId() != null) {
+				parentIds.add(task.parentId());
+			}
+		});
+		Map<TaskId, Color> rootColors = new HashMap<>();
+		Set<Color> used = new HashSet<>();
+		for (TaskDto task : allTasks) {
+			TaskId rootId = rootOf(task, byId);
+			if (!rootColors.containsKey(rootId)) {
+				rootColors.put(rootId, nextPaletteColor(used));
+			}
+		}
 		for (int index = 0; index < visible.size(); index++) {
 			TaskDto task = visible.get(index);
 			boolean selected = selectedIds.contains(task.id());
@@ -374,11 +405,14 @@ public final class GanttChartPanel extends JComponent {
 			int y = HEADER_HEIGHT + index * ROW_HEIGHT;
 			int barHeight = Math.max(10, ROW_HEIGHT - 14);
 			int barY = y + (ROW_HEIGHT - barHeight) / 2;
+			Color base = taskColor(task, byId, rootColors);
 
-			if (task.milestone()) {
-				paintMilestone(g, task, start, barY, barHeight, selected);
+			if (parentIds.contains(task.id())) {
+				paintSummaryBar(g, base, selected, start, end, y + ROW_HEIGHT / 2);
+			} else if (task.milestone()) {
+				paintMilestone(g, base, start, barY, barHeight, selected);
 			} else {
-				paintTaskBar(g, task, start, end, barY, barHeight, selected);
+				paintTaskBar(g, base, task.progress(), start, end, barY, barHeight, selected);
 			}
 
 			g.setColor(TEXT_COLOR);
@@ -397,18 +431,41 @@ public final class GanttChartPanel extends JComponent {
 			? draftEnd : task.end();
 	}
 
-	private void paintTaskBar(Graphics2D g, TaskDto task, LocalDate start, LocalDate end,
+	private void paintSummaryBar(Graphics2D g, Color base, boolean selected, LocalDate start, LocalDate end,
+		int centerY) {
+		int x0 = timeScale.xOf(start);
+		int x1 = timeScale.xOf(end) + timeScale.dayWidth();
+		Graphics2D barG = (Graphics2D) g.create();
+		barG.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		barG.setColor(selected ? SELECTED_BAR_COLOR : darken(base, 0.3f));
+		barG.setStroke(new BasicStroke(selected ? 3f : 2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+		barG.drawLine(x0, centerY, x1, centerY);
+		int size = 3;
+		Polygon left = new Polygon();
+		left.addPoint(x0, centerY);
+		left.addPoint(x0 + size, centerY - size);
+		left.addPoint(x0 + size, centerY + size);
+		Polygon right = new Polygon();
+		right.addPoint(x1, centerY);
+		right.addPoint(x1 - size, centerY - size);
+		right.addPoint(x1 - size, centerY + size);
+		barG.fill(left);
+		barG.fill(right);
+		barG.dispose();
+	}
+
+	private void paintTaskBar(Graphics2D g, Color base, float progress, LocalDate start, LocalDate end,
 		int barY, int barHeight, boolean selected) {
 		int x0 = timeScale.xOf(start);
 		int width = timeScale.widthFor(start, end);
 		Graphics2D barG = (Graphics2D) g.create();
 		barG.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-		barG.setPaint(new java.awt.GradientPaint(0, barY, new Color(0x60A5FA),
-			x0 + width, barY, BAR_COLOR));
+		barG.setPaint(new java.awt.GradientPaint(0, barY, lighten(base, 0.35f),
+			x0 + width, barY, base));
 		barG.fillRoundRect(x0, barY, width, barHeight, 6, 6);
 
-		if (task.progress() > 0f) {
-			int progressWidth = Math.max(1, Math.round(width * task.progress()));
+		if (progress > 0f) {
+			int progressWidth = Math.max(1, Math.round(width * progress));
 			barG.setColor(new Color(255, 255, 255, 30));
 			barG.fillRoundRect(x0 + 1, barY + barHeight / 2 + 1,
 				progressWidth - 2, barHeight / 2 - 2, 4, 4);
@@ -417,26 +474,79 @@ public final class GanttChartPanel extends JComponent {
 			barG.setColor(SELECTED_BAR_COLOR);
 			barG.setStroke(new BasicStroke(2f));
 		} else {
-			barG.setColor(new Color(0x1E40AF));
+			barG.setColor(darken(base, 0.25f));
 		}
 		barG.drawRoundRect(x0, barY, width, barHeight, 6, 6);
 		barG.dispose();
 	}
 
-	private void paintMilestone(Graphics2D g, TaskDto task, LocalDate date, int barY, int barHeight,
+	private static TaskId rootOf(TaskDto task, Map<TaskId, TaskDto> byId) {
+		TaskDto root = task;
+		while (root.parentId() != null) {
+			TaskDto parent = byId.get(root.parentId());
+			if (parent == null) {
+				break;
+			}
+			root = parent;
+		}
+		return root.id();
+	}
+
+	private static Color nextPaletteColor(Set<Color> used) {
+		int index = used.size();
+		for (int attempt = 0; attempt < TASK_PALETTE.length; attempt++) {
+			Color candidate = TASK_PALETTE[index % TASK_PALETTE.length];
+			if (!used.contains(candidate)) {
+				used.add(candidate);
+				return candidate;
+			}
+			index++;
+		}
+		Color base = TASK_PALETTE[Math.floorMod(index, TASK_PALETTE.length)];
+		used.add(base);
+		return base;
+	}
+
+	private static Color taskColor(TaskDto task, Map<TaskId, TaskDto> byId, Map<TaskId, Color> rootColors) {
+		TaskId rootId = rootOf(task, byId);
+		Color base = rootColors.get(rootId);
+		int level = Math.max(0, task.outlineLevel());
+		if (level == 0) {
+			return base;
+		}
+		float tint = Math.min(0.55f, 0.16f * level
+			+ 0.07f * Math.floorMod(Objects.hashCode(task.id()), 2));
+		return lighten(base, tint);
+	}
+
+	private static Color lighten(Color color, float amount) {
+		return new Color(
+			Math.round(color.getRed() + (255 - color.getRed()) * amount),
+			Math.round(color.getGreen() + (255 - color.getGreen()) * amount),
+			Math.round(color.getBlue() + (255 - color.getBlue()) * amount));
+	}
+
+	private static Color darken(Color color, float amount) {
+		return new Color(
+			Math.round(color.getRed() * (1 - amount)),
+			Math.round(color.getGreen() * (1 - amount)),
+			Math.round(color.getBlue() * (1 - amount)));
+	}
+
+	private void paintMilestone(Graphics2D g, Color base, LocalDate date, int barY, int barHeight,
 		boolean selected) {
 		int centerX = timeScale.xOf(date) + timeScale.dayWidth() / 2;
 		int centerY = barY + barHeight / 2;
 		int size = Math.max(8, barHeight);
 		int[] xs = {centerX, centerX + size, centerX, centerX - size};
 		int[] ys = {centerY - size, centerY, centerY + size, centerY};
-		g.setColor(MILESTONE_COLOR);
+		g.setColor(base);
 		g.fillPolygon(xs, ys, 4);
 		if (selected) {
 			g.setColor(SELECTED_BAR_COLOR);
 			g.setStroke(new BasicStroke(2f));
 		} else {
-			g.setColor(LINK_COLOR);
+			g.setColor(darken(base, 0.3f));
 		}
 		g.drawPolygon(xs, ys, 4);
 		g.setStroke(new BasicStroke(1f));

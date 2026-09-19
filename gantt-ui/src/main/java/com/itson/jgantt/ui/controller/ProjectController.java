@@ -96,9 +96,12 @@ public final class ProjectController {
 		notifyListeners();
 	}
 
-	public void addMilestone(String name) {
-		current = taskService.addTask(currentId, new AddTaskRequest(name, java.time.LocalDate.now(),
-			java.time.LocalDate.now(), TaskType.MILESTONE, null));
+	public void addMilestone(String name, TaskId parentId) {
+		LocalDate day = LocalDate.now();
+		if (parentId != null) {
+			day = current.taskOf(parentId).end();
+		}
+		current = taskService.addTask(currentId, new AddTaskRequest(name, day, day, TaskType.MILESTONE, parentId));
 		notifyListeners();
 	}
 

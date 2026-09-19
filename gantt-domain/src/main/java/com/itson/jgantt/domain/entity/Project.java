@@ -5,6 +5,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -15,6 +16,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import com.itson.jgantt.domain.exception.GanttDomainException;
+import com.itson.jgantt.domain.valueobject.DateRange;
 import com.itson.jgantt.domain.valueobject.ProjectId;
 import com.itson.jgantt.domain.valueobject.TaskId;
 import com.itson.jgantt.domain.valueobject.TaskType;
@@ -153,6 +155,50 @@ public final class Project {
 
 	public int countMilestones() {
 		return (int) tasks.stream().filter(Task::isMilestone).count();
+	}
+
+	public void syncSummaryRanges() {
+		Map<TaskId, Task> byId = new HashMap<>();
+		for (Task task : tasks) {
+			byId.put(task.id(), task);
+		}
+		int pass = 0;
+		while (pass++ <= tasks.size()) {
+			boolean changed = false;
+			for (Task task : new ArrayList<>(tasks)) {
+				if (task.isMilestone()) {
+					continue;
+				}
+				LocalDate minStart = null;
+				LocalDate maxEnd = null;
+				for (Task child : tasks) {
+					if (task.id().equals(child.parentId()) && !child.isMilestone()) {
+						if (minStart == null || child.range().start().isBefore(minStart)) {
+							minStart = child.range().start();
+						}
+						if (maxEnd == null || child.range().end().isAfter(maxEnd)) {
+							maxEnd = child.range().end();
+						}
+					}
+				}
+				if (minStart == null) {
+					continue;
+				}
+				Task current = byId.get(task.id());
+				LocalDate wantedStart = current.range().start().isBefore(minStart) ? current.range().start() : minStart;
+				LocalDate wantedEnd = current.range().end().isAfter(maxEnd) ? current.range().end() : maxEnd;
+				DateRange wanted = new DateRange(wantedStart, wantedEnd);
+				if (!wanted.equals(current.range())) {
+					Task updated = current.withRange(wanted);
+					replaceTask(updated);
+					byId.put(updated.id(), updated);
+					changed = true;
+				}
+			}
+			if (!changed) {
+				return;
+			}
+		}
 	}
 
 	public void addTask(Task task) {
