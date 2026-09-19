@@ -1,5 +1,6 @@
 package com.itson.jgantt.app.service;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.Optional;
 
@@ -19,8 +20,8 @@ public final class TaskScheduler {
 		Task task = project.find(taskId).orElseThrow();
 		earliestStart(project, task).ifPresent(earliest -> {
 			if (task.range().start().isBefore(earliest)) {
-				LocalDate newStart = earliest;
-				LocalDate newEnd = newStart.plusDays(task.range().lengthInDays() - 1);
+				LocalDate newStart = nextWorkingDay(project, earliest);
+				LocalDate newEnd = nextWorkingDay(project, newStart.plusDays(task.range().lengthInDays() - 1));
 				project.updateTask(task.withRange(new DateRange(newStart, newEnd)));
 			}
 		});
@@ -54,6 +55,22 @@ public final class TaskScheduler {
 			}
 		}
 		return Optional.ofNullable(earliest);
+	}
+
+	private boolean isWorkingDay(Project project, LocalDate date) {
+		DayOfWeek day = date.getDayOfWeek();
+		if (day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY) {
+			return false;
+		}
+		return !project.nonWorkingDays().contains(date);
+	}
+
+	private LocalDate nextWorkingDay(Project project, LocalDate date) {
+		LocalDate result = date;
+		while (!isWorkingDay(project, result)) {
+			result = result.plusDays(1);
+		}
+		return result;
 	}
 
 }

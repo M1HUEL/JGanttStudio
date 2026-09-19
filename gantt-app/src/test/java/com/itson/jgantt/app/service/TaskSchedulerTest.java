@@ -16,7 +16,7 @@ import com.itson.jgantt.domain.valueobject.TaskId;
 
 class TaskSchedulerTest {
 
-	private static final LocalDate BASE = LocalDate.of(2026, 1, 1);
+	private static final LocalDate BASE = LocalDate.of(2026, 1, 5);
 
 	private final TaskScheduler scheduler = new TaskScheduler();
 
@@ -47,7 +47,56 @@ class TaskSchedulerTest {
 
 		scheduler.reschedule(project, successor.id());
 
-		assertEquals(BASE.plusDays(6), project.find(successor.id()).orElseThrow().range().start());
+		assertEquals(BASE.plusDays(7), project.find(successor.id()).orElseThrow().range().start());
+	}
+
+	@Test
+	void finishToStartSkipsWeekend() {
+		Project project = emptyProject();
+		Task predecessor = task("A", 1, 2);
+		Task successor = task("B", 4, 4);
+		project.addTask(predecessor);
+		project.addTask(successor);
+		project.addLink(new TaskLink(predecessor.id(), successor.id(),
+			DependencyType.FINISH_TO_START, new Lag(4)));
+
+		scheduler.reschedule(project, successor.id());
+
+		assertEquals(BASE.plusDays(7), project.find(successor.id()).orElseThrow().range().start());
+		assertEquals(BASE.plusDays(7), project.find(successor.id()).orElseThrow().range().end());
+	}
+
+	@Test
+	void startSkipsConfiguredNonWorkingDay() {
+		Project project = emptyProject();
+		project.addNonWorkingDay(BASE.plusDays(1));
+		Task predecessor = task("A", 1, 1);
+		Task successor = task("B", 3, 3);
+		project.addTask(predecessor);
+		project.addTask(successor);
+		project.addLink(TaskLink.finishToStart(predecessor.id(), successor.id()));
+
+		scheduler.reschedule(project, successor.id());
+
+		Task after = project.find(successor.id()).orElseThrow();
+		assertEquals(BASE.plusDays(2), after.range().start());
+		assertEquals(BASE.plusDays(2), after.range().end());
+	}
+
+	@Test
+	void endSkipsWeekendForMultiDayTask() {
+		Project project = emptyProject();
+		Task predecessor = task("A", 1, 4);
+		Task successor = task("B", 2, 4);
+		project.addTask(predecessor);
+		project.addTask(successor);
+		project.addLink(TaskLink.finishToStart(predecessor.id(), successor.id()));
+
+		scheduler.reschedule(project, successor.id());
+
+		Task after = project.find(successor.id()).orElseThrow();
+		assertEquals(BASE.plusDays(3), after.range().start());
+		assertEquals(BASE.plusDays(7), after.range().end());
 	}
 
 	@Test
@@ -83,7 +132,7 @@ class TaskSchedulerTest {
 		assertEquals(BASE.plusDays(2), bAfter.range().start());
 		assertEquals(BASE.plusDays(4), bAfter.range().end());
 		assertEquals(BASE.plusDays(4), cAfter.range().start());
-		assertEquals(BASE.plusDays(6), cAfter.range().end());
+		assertEquals(BASE.plusDays(7), cAfter.range().end());
 	}
 
 	@Test
