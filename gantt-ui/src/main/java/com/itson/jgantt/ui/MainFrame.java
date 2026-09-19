@@ -6,7 +6,10 @@ import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Insets;
+import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
@@ -21,7 +24,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
@@ -42,6 +47,7 @@ import javax.swing.JToolBar;
 import javax.swing.KeyStroke;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
+import com.formdev.flatlaf.FlatClientProperties;
 import com.itson.jgantt.app.dto.ProjectDto;
 import com.itson.jgantt.app.dto.ProjectSummaryDto;
 import com.itson.jgantt.app.dto.TaskDto;
@@ -105,6 +111,7 @@ public final class MainFrame extends JFrame {
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setLayout(new BorderLayout());
 
+		configureProjectNameField();
 		setJMenuBar(buildMenuBar());
 		toolbar = buildToolbar();
 		add(toolbar, BorderLayout.NORTH);
@@ -252,8 +259,13 @@ public final class MainFrame extends JFrame {
 		JToolBar toolbar = new JToolBar();
 		toolbar.setFloatable(false);
 
-		toolbar.add(new JLabel(Messages.get("toolbar.project") + " "));
-		projectNameField.addActionListener(e -> runSafely(() -> controller.renameProject(projectNameField.getText())));
+		JLabel projectLabel = new JLabel(Messages.get("toolbar.project"));
+		projectLabel.setFont(UiFonts.semiBold(12));
+		projectLabel.setForeground(new Color(0x64748B));
+		toolbar.add(projectLabel);
+		toolbar.add(Box.createHorizontalStrut(6));
+		projectNameField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT,
+			Messages.get("toolbar.projectPlaceholder"));
 		toolbar.add(projectNameField);
 
 		toolbar.addSeparator();
@@ -385,6 +397,49 @@ public final class MainFrame extends JFrame {
 				}
 			}
 		});
+	}
+
+	private void configureProjectNameField() {
+		projectNameField.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, UiIcons.rename());
+		projectNameField.setFont(UiFonts.medium(13));
+		projectNameField.setColumns(22);
+		projectNameField.setMaximumSize(new Dimension(320, 30));
+		projectNameField.setEnabled(false);
+		projectNameField.addActionListener(e -> commitProjectName());
+		projectNameField.addFocusListener(new FocusAdapter() {
+
+			@Override
+			public void focusLost(FocusEvent e) {
+				commitProjectName();
+			}
+		});
+		projectNameField.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "revert");
+		projectNameField.getActionMap().put("revert", new AbstractAction() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				resetProjectName();
+			}
+		});
+	}
+
+	private void commitProjectName() {
+		if (!controller.hasProject()) {
+			return;
+		}
+		String current = controller.current().name();
+		String typed = projectNameField.getText().trim();
+		if (typed.isEmpty() || typed.equals(current)) {
+			projectNameField.setText(current);
+			return;
+		}
+		runSafely(() -> controller.renameProject(typed));
+	}
+
+	private void resetProjectName() {
+		if (controller.hasProject()) {
+			projectNameField.setText(controller.current().name());
+		}
 	}
 
 	private void newProject() {
@@ -557,6 +612,7 @@ public final class MainFrame extends JFrame {
 		centerCards.show(centerPanel, "main");
 		ProjectDto dto = controller.current();
 		tablePanel.setTasks(dto.tasks());
+		projectNameField.setEnabled(true);
 		projectNameField.setText(dto.name());
 		updateChart();
 		updateStatus();

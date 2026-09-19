@@ -170,6 +170,22 @@ public final class UiIcons {
 		});
 	}
 
+	public static Icon rename() {
+		return shape(g -> {
+			g.setStroke(stroke());
+			Path2D pencil = new Path2D.Double();
+			pencil.moveTo(2.5, 13.5);
+			pencil.lineTo(3.2, 10.4);
+			pencil.lineTo(10.6, 3.0);
+			pencil.lineTo(13.0, 5.4);
+			pencil.lineTo(5.6, 12.8);
+			pencil.closePath();
+			g.draw(pencil);
+			g.draw(new Line2D.Double(3.2, 10.4, 5.6, 12.8));
+			g.draw(new Line2D.Double(9.0, 4.6, 11.4, 7.0));
+		});
+	}
+
 	public static Icon table() {
 		return shape(g -> {
 			g.setStroke(stroke());

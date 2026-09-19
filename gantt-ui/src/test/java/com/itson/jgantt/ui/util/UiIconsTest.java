@@ -29,6 +29,7 @@ class UiIconsTest {
 				UiIcons.unlink(),
 				UiIcons.zoomIn(),
 				UiIcons.zoomOut(),
+				UiIcons.rename(),
 				UiIcons.table(),
 				UiIcons.calendar()}) {
 				assertNotNull(icon);
