@@ -11,6 +11,7 @@ import java.awt.Polygon;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -164,6 +165,23 @@ public final class GanttChartPanel extends JComponent {
 		}
 		Graphics2D g2 = (Graphics2D) g.create();
 		g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		paintAll(g2);
+		g2.dispose();
+	}
+
+	public BufferedImage toImage() {
+		ensureRange();
+		int width = Math.max(getPreferredSize().width, 1200);
+		int height = getPreferredSize().height;
+		BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+		Graphics2D g2 = image.createGraphics();
+		g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		paintAll(g2);
+		g2.dispose();
+		return image;
+	}
+
+	private void paintAll(Graphics2D g2) {
 		paintBackground(g2);
 		paintWeekends(g2);
 		paintNonWorkingDays(g2);
@@ -174,7 +192,6 @@ public final class GanttChartPanel extends JComponent {
 		paintSelection(g2);
 		paintBars(g2);
 		paintLinks(g2);
-		g2.dispose();
 	}
 
 	private void updateRange() {

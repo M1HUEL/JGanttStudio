@@ -11,6 +11,10 @@ import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
@@ -19,6 +23,7 @@ import java.util.Set;
 
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
@@ -32,6 +37,7 @@ import javax.swing.JSplitPane;
 import javax.swing.JTextField;
 import javax.swing.JToolBar;
 import javax.swing.KeyStroke;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 import com.itson.jgantt.app.dto.ProjectDto;
 import com.itson.jgantt.app.dto.ProjectSummaryDto;
@@ -41,6 +47,8 @@ import com.itson.jgantt.domain.valueobject.TaskId;
 import com.itson.jgantt.ui.controller.ProjectController;
 import com.itson.jgantt.ui.dialog.NonWorkingDaysDialog;
 import com.itson.jgantt.ui.dialog.OpenProjectDialog;
+import com.itson.jgantt.ui.export.GanttExcelExporter;
+import com.itson.jgantt.ui.export.GanttPdfExporter;
 import com.itson.jgantt.ui.model.TaskEditListener;
 import com.itson.jgantt.ui.panel.GanttChartPanel;
 import com.itson.jgantt.ui.panel.TaskTablePanel;
@@ -165,6 +173,11 @@ public final class MainFrame extends JFrame {
 		viewMenu.add(menuItem(Messages.get("action.resetZoom"),
 			KeyStroke.getKeyStroke(KeyEvent.VK_0, InputEvent.CTRL_DOWN_MASK), e -> chartPanel.setDayWidth(18)));
 		menuBar.add(viewMenu);
+
+		JMenu exportMenu = new JMenu(Messages.get("menu.export"));
+		exportMenu.add(menuItem(Messages.get("action.exportPdf"), e -> exportProjectPdf()));
+		exportMenu.add(menuItem(Messages.get("action.exportExcel"), e -> exportProjectExcel()));
+		menuBar.add(exportMenu);
 
 		JMenu languageMenu = new JMenu(Messages.get("menu.language"));
 		ButtonGroup group = new ButtonGroup();
@@ -313,6 +326,64 @@ public final class MainFrame extends JFrame {
 			.ifPresent(days -> runSafely(() -> controller.updateNonWorkingDays(days)));
 	}
 
+	private void exportProjectPdf() {
+		ProjectDto dto = controller.current();
+		if (dto == null) {
+			return;
+		}
+		Path target = chooseExportFile(dto, ".pdf", Messages.get("export.filter.pdf"));
+		if (target == null) {
+			return;
+		}
+		BufferedImage image = chartPanel.toImage();
+		runSafely(() -> {
+			try {
+				GanttPdfExporter.export(dto, image, target);
+				statusLabel.setText(String.format(Messages.get("export.status"), target));
+			} catch (IOException ex) {
+				throw new RuntimeException(ex);
+			}
+		});
+	}
+
+	private void exportProjectExcel() {
+		ProjectDto dto = controller.current();
+		if (dto == null) {
+			return;
+		}
+		Path target = chooseExportFile(dto, ".xlsx", Messages.get("export.filter.excel"));
+		if (target == null) {
+			return;
+		}
+		runSafely(() -> {
+			try {
+				GanttExcelExporter.export(dto, target);
+				statusLabel.setText(String.format(Messages.get("export.status"), target));
+			} catch (IOException ex) {
+				throw new RuntimeException(ex);
+			}
+		});
+	}
+
+	private Path chooseExportFile(ProjectDto dto, String extension, String description) {
+		JFileChooser chooser = new JFileChooser();
+		chooser.setDialogTitle(Messages.get("menu.export"));
+		chooser.setFileFilter(new FileNameExtensionFilter(description, extension.substring(1)));
+		String safeName = dto.name().replaceAll("[\\\\/:*?\"<>|]", "_").trim();
+		if (safeName.isBlank()) {
+			safeName = "project";
+		}
+		chooser.setSelectedFile(new File(safeName + extension));
+		if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+			return null;
+		}
+		Path target = chooser.getSelectedFile().toPath();
+		if (!target.getFileName().toString().toLowerCase().endsWith(extension)) {
+			target = target.resolveSibling(target.getFileName() + extension);
+		}
+		return target;
+	}
+
 	private void addTask() {
 		String name = JOptionPane.showInputDialog(this,
 			Messages.get("dialog.newTask.message"),
@@ -446,7 +517,7 @@ public final class MainFrame extends JFrame {
 	private void runSafely(Runnable action) {
 		try {
 			action.run();
-		} catch (RuntimeException ex) {
+		} catch (Exception ex) {
 			JOptionPane.showMessageDialog(this, ex.getMessage(), Messages.get("dialog.error"), JOptionPane.ERROR_MESSAGE);
 		}
 	}
