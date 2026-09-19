@@ -1,12 +1,16 @@
 package com.itson.jgantt.ui;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.Insets;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -30,237 +34,260 @@ import com.itson.jgantt.ui.panel.TaskTablePanel;
 
 public final class MainFrame extends JFrame {
 
-    private final ProjectController controller;
-    private final TaskTablePanel tablePanel;
-    private final GanttChartPanel chartPanel;
-    private final JTextField projectNameField = new JTextField(20);
-    private final JLabel statusLabel = new JLabel(" ");
+	private static final Color BUTTON_BG = new Color(0xFFFFFF);
+	private static final Color BUTTON_HOVER_BG = new Color(0xE8EEF7);
 
-    private JButton addSubtaskButton;
-    private JButton deleteButton;
-    private JButton linkButton;
-    private JButton unlinkButton;
+	private final ProjectController controller;
+	private final TaskTablePanel tablePanel;
+	private final GanttChartPanel chartPanel;
+	private final JTextField projectNameField = new JTextField(20);
+	private final JLabel statusLabel = new JLabel(" ");
 
-    public MainFrame(ProjectController controller) {
-        super("JGanttStudio");
-        this.controller = controller;
-        this.tablePanel = new TaskTablePanel(editListener(), this::updateChart);
-        this.chartPanel = new GanttChartPanel();
-        chartPanel.setDragListener((taskId, newStart, newEnd) ->
-                runSafely(() -> controller.changeDates(taskId, newStart, newEnd)));
+	private JButton addSubtaskButton;
+	private JButton deleteButton;
+	private JButton linkButton;
+	private JButton unlinkButton;
 
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLayout(new BorderLayout());
+	public MainFrame(ProjectController controller) {
+		super("JGanttStudio");
+		this.controller = controller;
+		this.tablePanel = new TaskTablePanel(editListener(), this::updateChart);
+		this.chartPanel = new GanttChartPanel();
+		chartPanel.setDragListener((taskId, newStart, newEnd)
+			-> runSafely(() -> controller.changeDates(taskId, newStart, newEnd)));
 
-        add(buildToolbar(), BorderLayout.NORTH);
-        add(buildCenter(), BorderLayout.CENTER);
-        add(statusLabel, BorderLayout.SOUTH);
+		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		setLayout(new BorderLayout());
 
-        tablePanel.getTable().getSelectionModel().addListSelectionListener(e -> updateButtons());
+		add(buildToolbar(), BorderLayout.NORTH);
+		add(buildCenter(), BorderLayout.CENTER);
+		add(statusLabel, BorderLayout.SOUTH);
 
-        setSize(new Dimension(1280, 760));
-        setLocationByPlatform(true);
+		tablePanel.getTable().getSelectionModel().addListSelectionListener(e -> updateButtons());
 
-        controller.addListener(this::onProjectChanged);
-    }
+		setSize(new Dimension(1440, 900));
+		setMinimumSize(new Dimension(1100, 700));
+		setLocationByPlatform(true);
 
-    public void initializeProject() {
-        List<ProjectSummaryDto> projects = controller.listProjects();
-        if (projects.isEmpty()) {
-            controller.newProject("Untitled");
-        } else {
-            controller.open(projects.getFirst().id());
-        }
-    }
+		controller.addListener(this::onProjectChanged);
+	}
 
-    private JToolBar buildToolbar() {
-        JToolBar toolbar = new JToolBar();
-        toolbar.setFloatable(false);
+	public void initializeProject() {
+		List<ProjectSummaryDto> projects = controller.listProjects();
+		if (projects.isEmpty()) {
+			controller.newProject("Untitled");
+		} else {
+			controller.open(projects.getFirst().id());
+		}
+	}
 
-        toolbar.add(new JLabel(" Project: "));
-        projectNameField.addActionListener(e -> runSafely(() -> controller.renameProject(projectNameField.getText())));
-        toolbar.add(projectNameField);
+	private JToolBar buildToolbar() {
+		JToolBar toolbar = new JToolBar();
+		toolbar.setFloatable(false);
 
-        toolbar.addSeparator();
-        toolbar.add(button("New", e -> newProject()));
-        toolbar.add(button("Open", e -> openProject()));
-        toolbar.add(button("Save", e -> runSafely(() -> controller.renameProject(projectNameField.getText()))));
+		toolbar.add(new JLabel(" Project: "));
+		projectNameField.addActionListener(e -> runSafely(() -> controller.renameProject(projectNameField.getText())));
+		toolbar.add(projectNameField);
 
-        toolbar.addSeparator();
-        toolbar.add(button("Add task", e -> addTask()));
-        addSubtaskButton = button("Add subtask", e -> addSubtask());
-        toolbar.add(addSubtaskButton);
-        toolbar.add(button("Add milestone", e -> addMilestone()));
-        deleteButton = button("Delete", e -> deleteSelection());
-        toolbar.add(deleteButton);
+		toolbar.addSeparator();
+		toolbar.add(button("New", e -> newProject()));
+		toolbar.add(button("Open", e -> openProject()));
+		toolbar.add(button("Save", e -> runSafely(() -> controller.renameProject(projectNameField.getText()))));
 
-        toolbar.addSeparator();
-        linkButton = button("Link", e -> linkSelection());
-        unlinkButton = button("Unlink", e -> unlinkSelection());
-        toolbar.add(linkButton);
-        toolbar.add(unlinkButton);
+		toolbar.addSeparator();
+		toolbar.add(button("Add task", e -> addTask()));
+		addSubtaskButton = button("Add subtask", e -> addSubtask());
+		toolbar.add(addSubtaskButton);
+		toolbar.add(button("Add milestone", e -> addMilestone()));
+		deleteButton = button("Delete", e -> deleteSelection());
+		toolbar.add(deleteButton);
 
-        toolbar.addSeparator();
-        toolbar.add(button("Zoom out", e -> chartPanel.setDayWidth(Math.max(6, chartPanel.dayWidth() - 4))));
-        toolbar.add(button("Zoom in", e -> chartPanel.setDayWidth(Math.min(80, chartPanel.dayWidth() + 4))));
+		toolbar.addSeparator();
+		linkButton = button("Link", e -> linkSelection());
+		unlinkButton = button("Unlink", e -> unlinkSelection());
+		toolbar.add(linkButton);
+		toolbar.add(unlinkButton);
 
-        return toolbar;
-    }
+		toolbar.addSeparator();
+		toolbar.add(button("Zoom out", e -> chartPanel.setDayWidth(Math.max(6, chartPanel.dayWidth() - 4))));
+		toolbar.add(button("Zoom in", e -> chartPanel.setDayWidth(Math.min(80, chartPanel.dayWidth() + 4))));
 
-    private JSplitPane buildCenter() {
-        JScrollPane chartScroll = new JScrollPane(chartPanel);
-        chartScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
-        tablePanel.getVerticalScrollBar().setModel(chartScroll.getVerticalScrollBar().getModel());
+		return toolbar;
+	}
 
-        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, tablePanel, chartScroll);
-        split.setDividerLocation(480);
-        split.setResizeWeight(0.25);
-        return split;
-    }
+	private JSplitPane buildCenter() {
+		JScrollPane chartScroll = new JScrollPane(chartPanel);
+		chartScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
+		tablePanel.getVerticalScrollBar().setModel(chartScroll.getVerticalScrollBar().getModel());
 
-    private JButton button(String text, ActionListener action) {
-        JButton button = new JButton(text);
-        button.addActionListener(action);
-        return button;
-    }
+		JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, tablePanel, chartScroll);
+		split.setDividerLocation(560);
+		split.setResizeWeight(0.28);
+		return split;
+	}
 
-    private void newProject() {
-        String name = JOptionPane.showInputDialog(this, "Project name:", "New project", JOptionPane.QUESTION_MESSAGE);
-        if (name == null || name.isBlank()) {
-            return;
-        }
-        runSafely(() -> controller.newProject(name));
-    }
+	private JButton button(String text, ActionListener action) {
+		JButton button = new JButton(text);
+		button.addActionListener(action);
+		button.setFocusable(false);
+		button.setMargin(new Insets(5, 12, 5, 12));
+		button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+		button.putClientProperty("JButton.buttonType", "square");
+		button.setBackground(BUTTON_BG);
+		button.addMouseListener(new MouseAdapter() {
 
-    private void openProject() {
-        ProjectId id = OpenProjectDialog.show(this, controller.listProjects());
-        if (id != null) {
-            runSafely(() -> controller.open(id));
-        }
-    }
+			@Override
+			public void mouseEntered(MouseEvent e) {
+				button.setBackground(BUTTON_HOVER_BG);
+			}
 
-    private void addTask() {
-        String name = JOptionPane.showInputDialog(this, "Task name:", "New task", JOptionPane.QUESTION_MESSAGE);
-        if (name == null || name.isBlank()) {
-            return;
-        }
-        runSafely(() -> controller.addTask(name));
-    }
+			@Override
+			public void mouseExited(MouseEvent e) {
+				button.setBackground(BUTTON_BG);
+			}
+		});
+		return button;
+	}
 
-    private void addSubtask() {
-        List<TaskId> selected = tablePanel.getSelectedTaskIds();
-        if (selected.isEmpty()) {
-            return;
-        }
-        runSafely(() -> controller.addSubtask(selected.getFirst()));
-    }
+	private void newProject() {
+		String name = JOptionPane.showInputDialog(this, "Project name:", "New project", JOptionPane.QUESTION_MESSAGE);
+		if (name == null || name.isBlank()) {
+			return;
+		}
+		runSafely(() -> controller.newProject(name));
+	}
 
-    private void addMilestone() {
-        String name = JOptionPane.showInputDialog(this, "Milestone name:", "Milestone", JOptionPane.QUESTION_MESSAGE);
-        if (name == null || name.isBlank()) {
-            return;
-        }
-        runSafely(() -> controller.addMilestone(name));
-    }
+	private void openProject() {
+		ProjectId id = OpenProjectDialog.show(this, controller.listProjects());
+		if (id != null) {
+			runSafely(() -> controller.open(id));
+		}
+	}
 
-    private void deleteSelection() {
-        List<TaskId> selected = tablePanel.getSelectedTaskIds();
-        if (selected.isEmpty()) {
-            return;
-        }
-        for (TaskId taskId : selected) {
-            runSafely(() -> controller.deleteTask(taskId));
-        }
-    }
+	private void addTask() {
+		String name = JOptionPane.showInputDialog(this, "Task name:", "New task", JOptionPane.QUESTION_MESSAGE);
+		if (name == null || name.isBlank()) {
+			return;
+		}
+		runSafely(() -> controller.addTask(name));
+	}
 
-    private void linkSelection() {
-        List<TaskId> selected = tablePanel.getSelectedTaskIds();
-        if (selected.size() < 2) {
-            return;
-        }
-        runSafely(() -> controller.linkFinishToStart(selected.get(0), selected.get(1)));
-    }
+	private void addSubtask() {
+		List<TaskId> selected = tablePanel.getSelectedTaskIds();
+		if (selected.isEmpty()) {
+			return;
+		}
+		runSafely(() -> controller.addSubtask(selected.getFirst()));
+	}
 
-    private void unlinkSelection() {
-        List<TaskId> selected = tablePanel.getSelectedTaskIds();
-        if (selected.size() < 2) {
-            return;
-        }
-        runSafely(() -> controller.unlink(selected.get(0), selected.get(1)));
-    }
+	private void addMilestone() {
+		String name = JOptionPane.showInputDialog(this, "Milestone name:", "Milestone", JOptionPane.QUESTION_MESSAGE);
+		if (name == null || name.isBlank()) {
+			return;
+		}
+		runSafely(() -> controller.addMilestone(name));
+	}
 
-    private TaskEditListener editListener() {
-        return new TaskEditListener() {
-            @Override
-            public void onRename(TaskId taskId, String newName) {
-                runSafely(() -> controller.renameTask(taskId, newName));
-            }
+	private void deleteSelection() {
+		List<TaskId> selected = tablePanel.getSelectedTaskIds();
+		if (selected.isEmpty()) {
+			return;
+		}
+		for (TaskId taskId : selected) {
+			runSafely(() -> controller.deleteTask(taskId));
+		}
+	}
 
-            @Override
-            public void onStartChange(TaskId taskId, LocalDate newStart) {
-                runSafely(() -> controller.changeStartDate(taskId, newStart));
-            }
+	private void linkSelection() {
+		List<TaskId> selected = tablePanel.getSelectedTaskIds();
+		if (selected.size() < 2) {
+			return;
+		}
+		runSafely(() -> controller.linkFinishToStart(selected.get(0), selected.get(1)));
+	}
 
-            @Override
-            public void onEndChange(TaskId taskId, LocalDate newEnd) {
-                runSafely(() -> controller.changeEndDate(taskId, newEnd));
-            }
+	private void unlinkSelection() {
+		List<TaskId> selected = tablePanel.getSelectedTaskIds();
+		if (selected.size() < 2) {
+			return;
+		}
+		runSafely(() -> controller.unlink(selected.get(0), selected.get(1)));
+	}
 
-            @Override
-            public void onProgressChange(TaskId taskId, float newProgress) {
-                runSafely(() -> controller.setProgress(taskId, newProgress));
-            }
-        };
-    }
+	private TaskEditListener editListener() {
+		return new TaskEditListener() {
 
-    private void onProjectChanged() {
-        if (!controller.hasProject()) {
-            return;
-        }
-        ProjectDto dto = controller.current();
-        tablePanel.setTasks(dto.tasks());
-        projectNameField.setText(dto.name());
-        updateChart();
-        updateStatus();
-        updateButtons();
-    }
+			@Override
+			public void onRename(TaskId taskId, String newName) {
+				runSafely(() -> controller.renameTask(taskId, newName));
+			}
 
-    private void updateChart() {
-        if (!controller.hasProject()) {
-            return;
-        }
-        ProjectDto dto = controller.current();
-        chartPanel.setData(dto.tasks(), tablePanel.visibleTasks(), dto.links());
-    }
+			@Override
+			public void onStartChange(TaskId taskId, LocalDate newStart) {
+				runSafely(() -> controller.changeStartDate(taskId, newStart));
+			}
 
-    private void updateStatus() {
-        if (!controller.hasProject()) {
-            return;
-        }
-        ProjectDto dto = controller.current();
-        long milestones = dto.tasks().stream().filter(TaskDto::milestone).count();
-        LocalDate min = dto.tasks().stream().map(TaskDto::start)
-                .min(LocalDate::compareTo).orElse(LocalDate.now());
-        LocalDate max = dto.tasks().stream().map(TaskDto::end)
-                .max(LocalDate::compareTo).orElse(LocalDate.now());
-        statusLabel.setText(String.format("  %d tasks, %d links, %d milestones   |   %s .. %s",
-                dto.tasks().size(), dto.links().size(), milestones, min, max));
-    }
+			@Override
+			public void onEndChange(TaskId taskId, LocalDate newEnd) {
+				runSafely(() -> controller.changeEndDate(taskId, newEnd));
+			}
 
-    private void updateButtons() {
-        List<TaskId> selected = tablePanel.getSelectedTaskIds();
-        addSubtaskButton.setEnabled(selected.size() >= 1);
-        deleteButton.setEnabled(selected.size() >= 1);
-        linkButton.setEnabled(selected.size() >= 2);
-        unlinkButton.setEnabled(selected.size() >= 2);
-        chartPanel.setSelectedIds(new HashSet<>(selected));
-    }
+			@Override
+			public void onProgressChange(TaskId taskId, float newProgress) {
+				runSafely(() -> controller.setProgress(taskId, newProgress));
+			}
+		};
+	}
 
-    private void runSafely(Runnable action) {
-        try {
-            action.run();
-        } catch (RuntimeException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-        }
-    }
+	private void onProjectChanged() {
+		if (!controller.hasProject()) {
+			return;
+		}
+		ProjectDto dto = controller.current();
+		tablePanel.setTasks(dto.tasks());
+		projectNameField.setText(dto.name());
+		updateChart();
+		updateStatus();
+		updateButtons();
+	}
+
+	private void updateChart() {
+		if (!controller.hasProject()) {
+			return;
+		}
+		ProjectDto dto = controller.current();
+		chartPanel.setData(dto.tasks(), tablePanel.visibleTasks(), dto.links());
+	}
+
+	private void updateStatus() {
+		if (!controller.hasProject()) {
+			return;
+		}
+		ProjectDto dto = controller.current();
+		long milestones = dto.tasks().stream().filter(TaskDto::milestone).count();
+		LocalDate min = dto.tasks().stream().map(TaskDto::start)
+			.min(LocalDate::compareTo).orElse(LocalDate.now());
+		LocalDate max = dto.tasks().stream().map(TaskDto::end)
+			.max(LocalDate::compareTo).orElse(LocalDate.now());
+		statusLabel.setText(String.format("  %d tasks, %d links, %d milestones   |   %s .. %s",
+			dto.tasks().size(), dto.links().size(), milestones, min, max));
+	}
+
+	private void updateButtons() {
+		List<TaskId> selected = tablePanel.getSelectedTaskIds();
+		addSubtaskButton.setEnabled(selected.size() >= 1);
+		deleteButton.setEnabled(selected.size() >= 1);
+		linkButton.setEnabled(selected.size() >= 2);
+		unlinkButton.setEnabled(selected.size() >= 2);
+		chartPanel.setSelectedIds(new HashSet<>(selected));
+	}
+
+	private void runSafely(Runnable action) {
+		try {
+			action.run();
+		} catch (RuntimeException ex) {
+			JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+		}
+	}
+
 }
