@@ -37,6 +37,18 @@ class SQLiteProjectRepositoryTest {
     }
 
     @Test
+    void findAllReturnsStoredProjects() {
+        repository.save(new Project(ProjectId.random(), "Zeta"));
+        repository.save(new Project(ProjectId.random(), "Alpha"));
+
+        List<String> names = repository.findAll().stream()
+                .map(info -> info.name())
+                .toList();
+
+        assertEquals(List.of("Alpha", "Zeta"), names);
+    }
+
+    @Test
     void findByIdReturnsEmptyForMissingProject() {
         assertTrue(repository.findById(ProjectId.random()).isEmpty());
     }

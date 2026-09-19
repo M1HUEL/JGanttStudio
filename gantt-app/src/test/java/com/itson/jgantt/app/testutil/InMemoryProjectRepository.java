@@ -1,10 +1,12 @@
 package com.itson.jgantt.app.testutil;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import com.itson.jgantt.domain.entity.Project;
+import com.itson.jgantt.domain.port.ProjectInfo;
 import com.itson.jgantt.domain.port.ProjectRepository;
 import com.itson.jgantt.domain.valueobject.ProjectId;
 
@@ -26,5 +28,12 @@ public final class InMemoryProjectRepository implements ProjectRepository {
     @Override
     public void delete(ProjectId id) {
         store.remove(id);
+    }
+
+    @Override
+    public List<ProjectInfo> findAll() {
+        return store.values().stream()
+                .map(project -> new ProjectInfo(project.id(), project.name()))
+                .toList();
     }
 }

@@ -1,5 +1,6 @@
 package com.itson.jgantt.domain.port;
 
+import java.util.List;
 import java.util.Optional;
 
 import com.itson.jgantt.domain.entity.Project;
@@ -12,4 +13,6 @@ public interface ProjectRepository {
     ProjectId save(Project project);
 
     void delete(ProjectId id);
+
+    List<ProjectInfo> findAll();
 }

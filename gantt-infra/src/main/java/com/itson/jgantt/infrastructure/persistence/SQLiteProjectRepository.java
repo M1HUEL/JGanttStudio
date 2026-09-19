@@ -15,6 +15,7 @@ import java.util.UUID;
 import com.itson.jgantt.domain.entity.Project;
 import com.itson.jgantt.domain.entity.Task;
 import com.itson.jgantt.domain.entity.TaskLink;
+import com.itson.jgantt.domain.port.ProjectInfo;
 import com.itson.jgantt.domain.port.ProjectRepository;
 import com.itson.jgantt.domain.valueobject.Lag;
 import com.itson.jgantt.domain.valueobject.ProjectId;
@@ -110,6 +111,24 @@ public final class SQLiteProjectRepository implements ProjectRepository {
             ps.executeUpdate();
         } catch (SQLException ex) {
             throw new InfrastructureException("Failed to delete project " + id, ex);
+        }
+    }
+
+    @Override
+    public List<ProjectInfo> findAll() {
+        try (Connection connection = connect();
+                PreparedStatement ps = connection.prepareStatement(
+                        "SELECT id, name FROM projects ORDER BY name");
+                ResultSet rs = ps.executeQuery()) {
+            List<ProjectInfo> projects = new ArrayList<>();
+            while (rs.next()) {
+                projects.add(new ProjectInfo(
+                        new ProjectId(UUID.fromString(rs.getString("id"))),
+                        rs.getString("name")));
+            }
+            return projects;
+        } catch (SQLException ex) {
+            throw new InfrastructureException("Failed to list projects", ex);
         }
     }
 

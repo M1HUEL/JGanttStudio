@@ -55,6 +55,15 @@ class ProjectServiceTest {
     }
 
     @Test
+    void listReturnsAllProjects() {
+        projectService.create("Alpha");
+        projectService.create("Beta");
+
+        assertEquals(2, projectService.list().size());
+        assertTrue(projectService.list().stream().anyMatch(p -> p.name().equals("Alpha")));
+    }
+
+    @Test
     void renameUpdatesProject() {
         ProjectDto created = projectService.create("Build");
         ProjectDto renamed = projectService.rename(created.id(), "Launch");
