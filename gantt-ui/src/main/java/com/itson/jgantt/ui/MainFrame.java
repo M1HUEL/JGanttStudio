@@ -6,6 +6,8 @@ import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Insets;
 import java.awt.event.ActionListener;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.time.LocalDate;
@@ -15,11 +17,15 @@ import java.util.List;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTextField;
 import javax.swing.JToolBar;
+import javax.swing.KeyStroke;
 
 import com.itson.jgantt.app.dto.ProjectDto;
 import com.itson.jgantt.app.dto.ProjectSummaryDto;
@@ -48,6 +54,11 @@ public final class MainFrame extends JFrame {
 	private JButton linkButton;
 	private JButton unlinkButton;
 
+	private JMenuItem addSubtaskItem;
+	private JMenuItem deleteItem;
+	private JMenuItem linkItem;
+	private JMenuItem unlinkItem;
+
 	public MainFrame(ProjectController controller) {
 		super("JGanttStudio");
 		this.controller = controller;
@@ -59,6 +70,7 @@ public final class MainFrame extends JFrame {
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setLayout(new BorderLayout());
 
+		setJMenuBar(buildMenuBar());
 		add(buildToolbar(), BorderLayout.NORTH);
 		add(buildCenter(), BorderLayout.CENTER);
 		add(statusLabel, BorderLayout.SOUTH);
@@ -79,6 +91,74 @@ public final class MainFrame extends JFrame {
 		} else {
 			controller.open(projects.getFirst().id());
 		}
+	}
+
+	private JMenuBar buildMenuBar() {
+		JMenuBar menuBar = new JMenuBar();
+
+		JMenu fileMenu = new JMenu("File");
+		fileMenu.add(menuItem("New project",
+			KeyStroke.getKeyStroke(KeyEvent.VK_N, InputEvent.CTRL_DOWN_MASK), e -> newProject()));
+		fileMenu.add(menuItem("Open project...",
+			KeyStroke.getKeyStroke(KeyEvent.VK_O, InputEvent.CTRL_DOWN_MASK), e -> openProject()));
+		fileMenu.add(menuItem("Save project",
+			KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK),
+			e -> runSafely(() -> controller.renameProject(projectNameField.getText()))));
+		fileMenu.addSeparator();
+		fileMenu.add(menuItem("Exit", e -> System.exit(0)));
+		menuBar.add(fileMenu);
+
+		JMenu editMenu = new JMenu("Edit");
+		editMenu.add(menuItem("Add task",
+			KeyStroke.getKeyStroke(KeyEvent.VK_T, InputEvent.CTRL_DOWN_MASK), e -> addTask()));
+		addSubtaskItem = menuItem("Add subtask",
+			KeyStroke.getKeyStroke(KeyEvent.VK_T, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
+			e -> addSubtask());
+		editMenu.add(addSubtaskItem);
+		editMenu.add(menuItem("Add milestone",
+			KeyStroke.getKeyStroke(KeyEvent.VK_M, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
+			e -> addMilestone()));
+		editMenu.addSeparator();
+		deleteItem = menuItem("Delete task",
+			KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), e -> deleteSelection());
+		editMenu.add(deleteItem);
+		menuBar.add(editMenu);
+
+		JMenu linkMenu = new JMenu("Links");
+		linkItem = menuItem("Link selected",
+			KeyStroke.getKeyStroke(KeyEvent.VK_L, InputEvent.CTRL_DOWN_MASK), e -> linkSelection());
+		linkMenu.add(linkItem);
+		unlinkItem = menuItem("Unlink selected",
+			KeyStroke.getKeyStroke(KeyEvent.VK_L, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
+			e -> unlinkSelection());
+		linkMenu.add(unlinkItem);
+		menuBar.add(linkMenu);
+
+		JMenu viewMenu = new JMenu("View");
+		viewMenu.add(menuItem("Zoom in",
+			KeyStroke.getKeyStroke(KeyEvent.VK_PLUS, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
+			e -> chartPanel.setDayWidth(Math.min(80, chartPanel.dayWidth() + 4))));
+		viewMenu.add(menuItem("Zoom out",
+			KeyStroke.getKeyStroke(KeyEvent.VK_MINUS, InputEvent.CTRL_DOWN_MASK),
+			e -> chartPanel.setDayWidth(Math.max(6, chartPanel.dayWidth() - 4))));
+		viewMenu.add(menuItem("Reset zoom",
+			KeyStroke.getKeyStroke(KeyEvent.VK_0, InputEvent.CTRL_DOWN_MASK), e -> chartPanel.setDayWidth(18)));
+		menuBar.add(viewMenu);
+
+		return menuBar;
+	}
+
+	private JMenuItem menuItem(String text, ActionListener action) {
+		return menuItem(text, null, action);
+	}
+
+	private JMenuItem menuItem(String text, KeyStroke accelerator, ActionListener action) {
+		JMenuItem item = new JMenuItem(text);
+		if (accelerator != null) {
+			item.setAccelerator(accelerator);
+		}
+		item.addActionListener(action);
+		return item;
 	}
 
 	private JToolBar buildToolbar() {
@@ -275,10 +355,16 @@ public final class MainFrame extends JFrame {
 
 	private void updateButtons() {
 		List<TaskId> selected = tablePanel.getSelectedTaskIds();
-		addSubtaskButton.setEnabled(selected.size() >= 1);
-		deleteButton.setEnabled(selected.size() >= 1);
-		linkButton.setEnabled(selected.size() >= 2);
-		unlinkButton.setEnabled(selected.size() >= 2);
+		boolean hasTask = selected.size() >= 1;
+		boolean hasPair = selected.size() >= 2;
+		addSubtaskButton.setEnabled(hasTask);
+		addSubtaskItem.setEnabled(hasTask);
+		deleteButton.setEnabled(hasTask);
+		deleteItem.setEnabled(hasTask);
+		linkButton.setEnabled(hasPair);
+		linkItem.setEnabled(hasPair);
+		unlinkButton.setEnabled(hasPair);
+		unlinkItem.setEnabled(hasPair);
 		chartPanel.setSelectedIds(new HashSet<>(selected));
 	}
 
