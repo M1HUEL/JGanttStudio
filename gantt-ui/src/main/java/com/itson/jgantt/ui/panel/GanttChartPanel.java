@@ -32,8 +32,10 @@ import com.itson.jgantt.ui.util.UiFonts;
 
 public final class GanttChartPanel extends JComponent {
 
-    public static final int HEADER_HEIGHT = 44;
+    public static final int HEADER_HEIGHT = 48;
     public static final int ROW_HEIGHT = TaskTablePanel.ROW_HEIGHT;
+
+    private static final int MONTH_BAND_HEIGHT = 20;
 
     private static final Color BAR_COLOR = new Color(0x3B82F6);
     private static final Color PROGRESS_COLOR = new Color(0x1D4ED8);
@@ -41,16 +43,23 @@ public final class GanttChartPanel extends JComponent {
     private static final Color LINK_COLOR = new Color(0x64748B);
     private static final Color GRID_COLOR = new Color(0xE2E8F0);
     private static final Color HEADER_COLOR = new Color(0xEEF2F7);
+    private static final Color MONTH_ALT_COLOR = new Color(0xF7F9FC);
+    private static final Color WEEKEND_HEADER_COLOR = new Color(0xE4EAF1);
+    private static final Color TODAY_HEADER_COLOR = new Color(0xFDEAEA);
     private static final Color TODAY_COLOR = new Color(0xEF4444);
     private static final Color TEXT_COLOR = new Color(0x334155);
+    private static final Color GRAY_TEXT_COLOR = new Color(0x64748B);
     private static final Color WEEKEND_COLOR = new Color(0xFAFAFB);
     private static final Color SELECTION_COLOR = new Color(59, 130, 246, 38);
     private static final Color SELECTED_BAR_COLOR = new Color(0x1E3A8A);
     private static final Color ZEBRA_COLOR = new Color(0xF5F7FB);
 
     private static final DateTimeFormatter MONTH_FORMAT = DateTimeFormatter.ofPattern("MMM yyyy");
-    private static final Font HEADER_FONT = UiFonts.semiBold(12);
     private static final Font LABEL_FONT = UiFonts.regular(12);
+    private static final Font MONTH_FONT = UiFonts.semiBold(12);
+    private static final Font DAY_LETTER_FONT = UiFonts.medium(11);
+    private static final Font DAY_NUMBER_FONT = UiFonts.regular(9);
+    private static final String[] WEEKDAY_LETTERS = {"M", "T", "W", "T", "F", "S", "S"};
 
     private final TimeScale timeScale = new TimeScale();
     private List<TaskDto> allTasks = List.of();
@@ -238,29 +247,63 @@ public final class GanttChartPanel extends JComponent {
         g.setColor(HEADER_COLOR);
         g.fillRect(0, 0, getWidth(), HEADER_HEIGHT);
 
-        g.setFont(HEADER_FONT);
+        LocalDate today = LocalDate.now();
+
+        for (LocalDate date = rangeStart; !date.isAfter(rangeEnd); date = date.plusDays(1)) {
+            if (date.equals(today)) {
+                g.setColor(TODAY_HEADER_COLOR);
+                g.fillRect(timeScale.xOf(date), 0, timeScale.dayWidth(), HEADER_HEIGHT);
+            } else {
+                DayOfWeek day = date.getDayOfWeek();
+                if (day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY) {
+                    g.setColor(WEEKEND_HEADER_COLOR);
+                    g.fillRect(timeScale.xOf(date), 0, timeScale.dayWidth(), HEADER_HEIGHT);
+                }
+            }
+        }
+
+        g.setFont(MONTH_FONT);
+        boolean alternate = false;
         for (LocalDate month = rangeStart.withDayOfMonth(1);
                 !month.isAfter(rangeEnd); month = month.plusMonths(1)) {
             LocalDate monthEnd = month.withDayOfMonth(month.lengthOfMonth());
             int x0 = timeScale.xOf(month);
             int x1 = timeScale.xOf(monthEnd) + timeScale.dayWidth();
-            g.setColor(HEADER_COLOR);
-            g.fillRect(x0, 0, x1 - x0 - 1, 20);
+            g.setColor(alternate ? MONTH_ALT_COLOR : HEADER_COLOR);
+            g.fillRect(x0, 0, Math.max(0, x1 - x0 - 1), MONTH_BAND_HEIGHT);
             g.setColor(TEXT_COLOR);
             g.drawString(month.format(MONTH_FORMAT), x0 + 4, 15);
+            alternate = !alternate;
         }
 
-        g.setColor(TEXT_COLOR);
+        int dayBandY = MONTH_BAND_HEIGHT;
+        int dayBandHeight = HEADER_HEIGHT - MONTH_BAND_HEIGHT;
+        g.setColor(GRID_COLOR);
+        for (LocalDate date = rangeStart; !date.isAfter(rangeEnd); date = date.plusDays(1)) {
+            int x = timeScale.xOf(date);
+            g.drawLine(x, dayBandY, x, HEADER_HEIGHT);
+        }
+        if (timeScale.dayWidth() >= 10) {
+            g.setFont(DAY_LETTER_FONT);
+            g.setColor(GRAY_TEXT_COLOR);
+            for (LocalDate date = rangeStart; !date.isAfter(rangeEnd); date = date.plusDays(1)) {
+                int x = timeScale.xOf(date) + 3;
+                g.drawString(WEEKDAY_LETTERS[date.getDayOfWeek().getValue() - 1], x, dayBandY + 13);
+            }
+        }
         if (timeScale.dayWidth() >= 8) {
+            g.setFont(DAY_NUMBER_FONT);
+            g.setColor(TEXT_COLOR);
             for (LocalDate date = rangeStart; !date.isAfter(rangeEnd); date = date.plusDays(1)) {
                 int x = timeScale.xOf(date);
-                g.drawString(String.valueOf(date.getDayOfMonth()), x + 2, HEADER_HEIGHT - 7);
+                g.drawString(String.valueOf(date.getDayOfMonth()),
+                        x + timeScale.dayWidth() / 2 - 3, dayBandY + dayBandHeight - 5);
             }
         }
 
         g.setColor(LINK_COLOR);
         g.drawLine(0, HEADER_HEIGHT - 1, getWidth(), HEADER_HEIGHT - 1);
-        g.drawLine(0, 20, getWidth(), 20);
+        g.drawLine(0, MONTH_BAND_HEIGHT - 1, getWidth(), MONTH_BAND_HEIGHT - 1);
     }
 
     private void paintBars(Graphics2D g) {
