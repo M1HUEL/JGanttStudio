@@ -32,6 +32,7 @@ import javax.swing.border.EmptyBorder;
 
 import com.itson.jgantt.ui.util.DatePicker;
 import com.itson.jgantt.ui.util.Messages;
+import com.itson.jgantt.ui.util.UiIcons;
 
 public final class NonWorkingDaysDialog {
 
@@ -70,7 +71,11 @@ public final class NonWorkingDaysDialog {
 		dateSpinner = new JSpinner(new SpinnerDateModel());
 		dateSpinner.setEditor(new JSpinner.DateEditor(dateSpinner, Messages.datePattern()));
 
-		JButton pickButton = styleButton("\u2026");
+		JButton pickButton = new JButton(UiIcons.calendar());
+		pickButton.setFocusable(false);
+		pickButton.setContentAreaFilled(false);
+		pickButton.setBorder(BorderFactory.createEmptyBorder(0, 2, 0, 2));
+		pickButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		pickButton.setToolTipText(Messages.get("dialog.nonWorkingDays.pick"));
 		pickButton.addActionListener(e -> DatePicker.showPopup(pickButton, 0, pickButton.getHeight(),
 			spinnerDate(), date -> dateSpinner.setValue(toDate(date))));

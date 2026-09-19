@@ -18,6 +18,7 @@ import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.List;
 
+import javax.swing.BorderFactory;
 import javax.swing.DefaultCellEditor;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -68,6 +69,8 @@ public final class TaskTablePanel extends JPanel {
 		table.setIntercellSpacing(new Dimension(0, 0));
 		table.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 		table.getTableHeader().setReorderingAllowed(false);
+		table.getTableHeader().setDefaultRenderer(new HeaderRenderer());
+		table.getTableHeader().setPreferredSize(new Dimension(0, 34));
 		table.setAutoCreateRowSorter(false);
 		table.setDefaultRenderer(Object.class, new ZebraRenderer());
 
@@ -320,6 +323,32 @@ public final class TaskTablePanel extends JPanel {
 		if (!isSelected) {
 			renderer.setBackground(row % 2 == 0 ? Color.WHITE : ZEBRA_COLOR);
 		}
+	}
+
+	private static final class HeaderRenderer extends DefaultTableCellRenderer {
+
+		private static final Color HEADER_BG = new Color(0xEEF2F7);
+		private static final Color HEADER_FG = new Color(0x44506A);
+
+		private HeaderRenderer() {
+			setHorizontalAlignment(JLabel.LEFT);
+			setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, new Color(0x3B82F6)));
+			setFont(UiFonts.semiBold(12));
+		}
+
+		@Override
+		public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+			boolean hasFocus, int row, int column) {
+			Component cell = super.getTableCellRendererComponent(
+				table, value, isSelected, hasFocus, row, column);
+			setBackground(HEADER_BG);
+			setForeground(HEADER_FG);
+			setBorder(BorderFactory.createCompoundBorder(
+				BorderFactory.createMatteBorder(0, 0, 2, 0, new Color(0x3B82F6)),
+				BorderFactory.createEmptyBorder(0, 8, 0, 0)));
+			return cell;
+		}
+
 	}
 
 	private static final class ZebraRenderer extends DefaultTableCellRenderer {

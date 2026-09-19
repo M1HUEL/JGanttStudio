@@ -45,8 +45,9 @@ public final class Main {
     private static void installLookAndFeel() {
         UiFonts.register();
         try {
-            UIManager.setLookAndFeel(new FlatLightLaf());
             UIManager.put("defaultFont", new FontUIResource(UiFonts.regular(13)));
+            applyTheme();
+            UIManager.setLookAndFeel(new FlatLightLaf());
         } catch (Exception ignored) {
             try {
                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
@@ -54,6 +55,24 @@ public final class Main {
                 // keep default look and feel
             }
         }
+    }
+
+    private static void applyTheme() {
+        UIManager.put("Component.arc", 10);
+        UIManager.put("Button.arc", 10);
+        UIManager.put("TextComponent.arc", 8);
+        UIManager.put("Component.focusWidth", 2);
+        UIManager.put("Component.innerFocusWidth", 0);
+        UIManager.put("Component.arrowType", "chevron");
+        UIManager.put("@accentColor", "#2563EB");
+        UIManager.put("ToolBar.background", "#FFFFFF");
+        UIManager.put("ToolBar.borderColor", "#E0E6EF");
+        UIManager.put("ScrollPane.smoothScrolling", true);
+        UIManager.put("MenuItem.arc", 8);
+        UIManager.put("PopupMenu.borderColor", "#D8E2F0");
+        UIManager.put("Table.showHorizontalLines", false);
+        UIManager.put("Table.showVerticalLines", false);
+        UIManager.put("Table.intercellSpacing", new java.awt.Dimension(0, 0));
     }
 
     private static String databasePath() {

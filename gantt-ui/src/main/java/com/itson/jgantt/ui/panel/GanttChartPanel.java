@@ -401,22 +401,26 @@ public final class GanttChartPanel extends JComponent {
 		int barY, int barHeight, boolean selected) {
 		int x0 = timeScale.xOf(start);
 		int width = timeScale.widthFor(start, end);
-		g.setColor(BAR_COLOR);
-		g.fillRoundRect(x0, barY, width, barHeight, 4, 4);
+		Graphics2D barG = (Graphics2D) g.create();
+		barG.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		barG.setPaint(new java.awt.GradientPaint(0, barY, new Color(0x60A5FA),
+			x0 + width, barY, BAR_COLOR));
+		barG.fillRoundRect(x0, barY, width, barHeight, 6, 6);
 
 		if (task.progress() > 0f) {
 			int progressWidth = Math.max(1, Math.round(width * task.progress()));
-			g.setColor(PROGRESS_COLOR);
-			g.fillRect(x0 + 1, barY + barHeight / 2, progressWidth - 2, barHeight / 2);
+			barG.setColor(new Color(255, 255, 255, 30));
+			barG.fillRoundRect(x0 + 1, barY + barHeight / 2 + 1,
+				progressWidth - 2, barHeight / 2 - 2, 4, 4);
 		}
 		if (selected) {
-			g.setColor(SELECTED_BAR_COLOR);
-			g.setStroke(new BasicStroke(2f));
+			barG.setColor(SELECTED_BAR_COLOR);
+			barG.setStroke(new BasicStroke(2f));
 		} else {
-			g.setColor(LINK_COLOR);
+			barG.setColor(new Color(0x1E40AF));
 		}
-		g.drawRoundRect(x0, barY, width, barHeight, 4, 4);
-		g.setStroke(new BasicStroke(1f));
+		barG.drawRoundRect(x0, barY, width, barHeight, 6, 6);
+		barG.dispose();
 	}
 
 	private void paintMilestone(Graphics2D g, TaskDto task, LocalDate date, int barY, int barHeight,

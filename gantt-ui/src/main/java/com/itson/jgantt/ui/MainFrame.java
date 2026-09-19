@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
@@ -54,6 +55,8 @@ import com.itson.jgantt.ui.panel.GanttChartPanel;
 import com.itson.jgantt.ui.panel.TaskTablePanel;
 import com.itson.jgantt.ui.panel.WelcomePanel;
 import com.itson.jgantt.ui.util.Messages;
+import com.itson.jgantt.ui.util.UiFonts;
+import com.itson.jgantt.ui.util.UiIcons;
 
 public final class MainFrame extends JFrame {
 
@@ -100,7 +103,7 @@ public final class MainFrame extends JFrame {
 		centerPanel.add(buildSplitPane(), "main");
 		centerPanel.add(welcomePanel, "welcome");
 		add(centerPanel, BorderLayout.CENTER);
-		add(statusLabel, BorderLayout.SOUTH);
+		add(buildStatusBar(), BorderLayout.SOUTH);
 
 		tablePanel.getTable().getSelectionModel().addListSelectionListener(e -> updateButtons());
 
@@ -240,30 +243,43 @@ public final class MainFrame extends JFrame {
 		toolbar.add(projectNameField);
 
 		toolbar.addSeparator();
-		toolbar.add(button(Messages.get("toolbar.new"), e -> newProject()));
-		toolbar.add(button(Messages.get("toolbar.open"), e -> openProject()));
-		toolbar.add(button(Messages.get("toolbar.save"),
+		toolbar.add(iconButton(UiIcons.newProject(), Messages.get("toolbar.new"), e -> newProject()));
+		toolbar.add(iconButton(UiIcons.openFolder(), Messages.get("toolbar.open"), e -> openProject()));
+		toolbar.add(iconButton(UiIcons.save(), Messages.get("toolbar.save"),
 			e -> runSafely(() -> controller.renameProject(projectNameField.getText()))));
 
 		toolbar.addSeparator();
-		toolbar.add(button(Messages.get("toolbar.addTask"), e -> addTask()));
-		addSubtaskButton = button(Messages.get("toolbar.addSubtask"), e -> addSubtask());
+		toolbar.add(iconButton(UiIcons.addTask(), Messages.get("toolbar.addTask"), e -> addTask()));
+		addSubtaskButton = iconButton(UiIcons.addSubtask(), Messages.get("toolbar.addSubtask"), e -> addSubtask());
 		toolbar.add(addSubtaskButton);
-		toolbar.add(button(Messages.get("toolbar.addMilestone"), e -> addMilestone()));
-		deleteButton = button(Messages.get("toolbar.delete"), e -> deleteSelection());
+		toolbar.add(iconButton(UiIcons.addMilestone(), Messages.get("toolbar.addMilestone"), e -> addMilestone()));
+		deleteButton = iconButton(UiIcons.delete(), Messages.get("toolbar.delete"), e -> deleteSelection());
 		toolbar.add(deleteButton);
 
 		toolbar.addSeparator();
-		linkButton = button(Messages.get("toolbar.link"), e -> linkSelection());
-		unlinkButton = button(Messages.get("toolbar.unlink"), e -> unlinkSelection());
+		linkButton = iconButton(UiIcons.link(), Messages.get("toolbar.link"), e -> linkSelection());
+		unlinkButton = iconButton(UiIcons.unlink(), Messages.get("toolbar.unlink"), e -> unlinkSelection());
 		toolbar.add(linkButton);
 		toolbar.add(unlinkButton);
 
 		toolbar.addSeparator();
-		toolbar.add(button("Zoom out", e -> chartPanel.setDayWidth(Math.max(6, chartPanel.dayWidth() - 4))));
-		toolbar.add(button("Zoom in", e -> chartPanel.setDayWidth(Math.min(80, chartPanel.dayWidth() + 4))));
+		toolbar.add(iconButton(UiIcons.zoomOut(), Messages.get("action.zoomOut"),
+			e -> chartPanel.setDayWidth(Math.max(6, chartPanel.dayWidth() - 4))));
+		toolbar.add(iconButton(UiIcons.zoomIn(), Messages.get("action.zoomIn"),
+			e -> chartPanel.setDayWidth(Math.min(80, chartPanel.dayWidth() + 4))));
 
 		return toolbar;
+	}
+
+	private JPanel buildStatusBar() {
+		JPanel bar = new JPanel(new BorderLayout());
+		bar.setBackground(new Color(0xEEF2F7));
+		bar.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(0xE0E6EF)));
+		statusLabel.setFont(UiFonts.regular(11));
+		statusLabel.setForeground(new Color(0x64748B));
+		statusLabel.setBorder(BorderFactory.createEmptyBorder(4, 10, 4, 10));
+		bar.add(statusLabel, BorderLayout.WEST);
+		return bar;
 	}
 
 	private JSplitPane buildSplitPane() {
@@ -277,14 +293,16 @@ public final class MainFrame extends JFrame {
 		return split;
 	}
 
-	private JButton button(String text, ActionListener action) {
-		JButton button = new JButton(text);
+	private JButton iconButton(javax.swing.Icon icon, String tooltip, ActionListener action) {
+		JButton button = new JButton(icon);
+		button.setToolTipText(tooltip);
 		button.addActionListener(action);
 		button.setFocusable(false);
-		button.setMargin(new Insets(5, 12, 5, 12));
+		button.setMargin(new Insets(4, 6, 4, 6));
 		button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		button.putClientProperty("JButton.buttonType", "square");
 		button.setBackground(BUTTON_BG);
+		button.setBorder(BorderFactory.createEmptyBorder(3, 5, 3, 5));
 		button.addMouseListener(new MouseAdapter() {
 
 			@Override
