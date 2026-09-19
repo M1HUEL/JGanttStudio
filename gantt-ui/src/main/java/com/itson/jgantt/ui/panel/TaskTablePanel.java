@@ -107,6 +107,13 @@ public final class TaskTablePanel extends JPanel {
 		restoreSelection(selection);
 	}
 
+	public void refreshColumnHeaders() {
+		for (int i = 0; i < table.getColumnModel().getColumnCount(); i++) {
+			table.getColumnModel().getColumn(i).setHeaderValue(model.getColumnName(i));
+		}
+		table.getTableHeader().repaint();
+	}
+
 	private void restoreSelection(List<TaskId> ids) {
 		table.clearSelection();
 		for (int row = 0; row < model.getRowCount(); row++) {

@@ -11,6 +11,7 @@ import javax.swing.table.AbstractTableModel;
 
 import com.itson.jgantt.app.dto.TaskDto;
 import com.itson.jgantt.domain.valueobject.TaskId;
+import com.itson.jgantt.ui.util.Messages;
 import com.itson.jgantt.ui.util.TaskOutline;
 
 public final class OutlineTaskTableModel extends AbstractTableModel {
@@ -21,7 +22,7 @@ public final class OutlineTaskTableModel extends AbstractTableModel {
     public static final int COL_LENGTH = 3;
     public static final int COL_PROGRESS = 4;
 
-    private static final String[] COLUMNS = {"Name", "Start", "End", "Length", "Progress"};
+    private static final String[] COLUMNS = {"column.name", "column.start", "column.end", "column.length", "column.progress"};
 
     private final TaskEditListener listener;
     private List<TaskDto> allTasks = new ArrayList<>();
@@ -77,7 +78,7 @@ public final class OutlineTaskTableModel extends AbstractTableModel {
 
     @Override
     public String getColumnName(int column) {
-        return COLUMNS[column];
+        return Messages.get(COLUMNS[column]);
     }
 
     @Override

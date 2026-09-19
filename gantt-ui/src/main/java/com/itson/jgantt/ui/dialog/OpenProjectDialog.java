@@ -13,6 +13,7 @@ import javax.swing.ListSelectionModel;
 
 import com.itson.jgantt.app.dto.ProjectSummaryDto;
 import com.itson.jgantt.domain.valueobject.ProjectId;
+import com.itson.jgantt.ui.util.Messages;
 
 public final class OpenProjectDialog {
 
@@ -22,8 +23,8 @@ public final class OpenProjectDialog {
 	public static ProjectId show(Component parent, List<ProjectSummaryDto> projects) {
 		if (projects.isEmpty()) {
 			JOptionPane.showMessageDialog(parent,
-				"There are no saved projects yet.\nCreate a new project first.",
-				"Open project", JOptionPane.INFORMATION_MESSAGE);
+				Messages.get("open.none"),
+				Messages.get("open.title"), JOptionPane.INFORMATION_MESSAGE);
 			return null;
 		}
 
@@ -48,9 +49,10 @@ public final class OpenProjectDialog {
 			}
 		});
 
+		Object[] options = {Messages.get("open.ok"), Messages.get("open.cancel")};
 		int option = JOptionPane.showOptionDialog(parent, new JScrollPane(list),
-			"Open project", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE,
-			null, new Object[]{"Open", "Cancel"}, "Open");
+			Messages.get("open.title"), JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE,
+			null, options, options[0]);
 		if (option != JOptionPane.OK_OPTION) {
 			return null;
 		}

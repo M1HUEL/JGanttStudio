@@ -1,6 +1,7 @@
 package com.itson.jgantt.ui;
 
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
@@ -13,7 +14,9 @@ import java.awt.event.MouseEvent;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 
+import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -21,6 +24,8 @@ import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTextField;
@@ -37,6 +42,8 @@ import com.itson.jgantt.ui.dialog.OpenProjectDialog;
 import com.itson.jgantt.ui.model.TaskEditListener;
 import com.itson.jgantt.ui.panel.GanttChartPanel;
 import com.itson.jgantt.ui.panel.TaskTablePanel;
+import com.itson.jgantt.ui.panel.WelcomePanel;
+import com.itson.jgantt.ui.util.Messages;
 
 public final class MainFrame extends JFrame {
 
@@ -48,7 +55,11 @@ public final class MainFrame extends JFrame {
 	private final GanttChartPanel chartPanel;
 	private final JTextField projectNameField = new JTextField(20);
 	private final JLabel statusLabel = new JLabel(" ");
+	private final CardLayout centerCards = new CardLayout();
+	private final JPanel centerPanel = new JPanel(centerCards);
+	private final WelcomePanel welcomePanel;
 
+	private JToolBar toolbar;
 	private JButton addSubtaskButton;
 	private JButton deleteButton;
 	private JButton linkButton;
@@ -67,12 +78,18 @@ public final class MainFrame extends JFrame {
 		chartPanel.setDragListener((taskId, newStart, newEnd)
 			-> runSafely(() -> controller.changeDates(taskId, newStart, newEnd)));
 
+		welcomePanel = new WelcomePanel(this::newProject, this::openProject);
+
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setLayout(new BorderLayout());
 
 		setJMenuBar(buildMenuBar());
-		add(buildToolbar(), BorderLayout.NORTH);
-		add(buildCenter(), BorderLayout.CENTER);
+		toolbar = buildToolbar();
+		add(toolbar, BorderLayout.NORTH);
+
+		centerPanel.add(buildSplitPane(), "main");
+		centerPanel.add(welcomePanel, "welcome");
+		add(centerPanel, BorderLayout.CENTER);
 		add(statusLabel, BorderLayout.SOUTH);
 
 		tablePanel.getTable().getSelectionModel().addListSelectionListener(e -> updateButtons());
@@ -87,7 +104,7 @@ public final class MainFrame extends JFrame {
 	public void initializeProject() {
 		List<ProjectSummaryDto> projects = controller.listProjects();
 		if (projects.isEmpty()) {
-			controller.newProject("Untitled");
+			centerCards.show(centerPanel, "welcome");
 		} else {
 			controller.open(projects.getFirst().id());
 		}
@@ -96,56 +113,91 @@ public final class MainFrame extends JFrame {
 	private JMenuBar buildMenuBar() {
 		JMenuBar menuBar = new JMenuBar();
 
-		JMenu fileMenu = new JMenu("File");
-		fileMenu.add(menuItem("New project",
+		JMenu fileMenu = new JMenu(Messages.get("menu.file"));
+		fileMenu.add(menuItem(Messages.get("action.newProject"),
 			KeyStroke.getKeyStroke(KeyEvent.VK_N, InputEvent.CTRL_DOWN_MASK), e -> newProject()));
-		fileMenu.add(menuItem("Open project...",
+		fileMenu.add(menuItem(Messages.get("action.openProject"),
 			KeyStroke.getKeyStroke(KeyEvent.VK_O, InputEvent.CTRL_DOWN_MASK), e -> openProject()));
-		fileMenu.add(menuItem("Save project",
+		fileMenu.add(menuItem(Messages.get("action.saveProject"),
 			KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK),
 			e -> runSafely(() -> controller.renameProject(projectNameField.getText()))));
 		fileMenu.addSeparator();
-		fileMenu.add(menuItem("Exit", e -> System.exit(0)));
+		fileMenu.add(menuItem(Messages.get("action.exit"), e -> System.exit(0)));
 		menuBar.add(fileMenu);
 
-		JMenu editMenu = new JMenu("Edit");
-		editMenu.add(menuItem("Add task",
+		JMenu editMenu = new JMenu(Messages.get("menu.edit"));
+		editMenu.add(menuItem(Messages.get("action.addTask"),
 			KeyStroke.getKeyStroke(KeyEvent.VK_T, InputEvent.CTRL_DOWN_MASK), e -> addTask()));
-		addSubtaskItem = menuItem("Add subtask",
+		addSubtaskItem = menuItem(Messages.get("action.addSubtask"),
 			KeyStroke.getKeyStroke(KeyEvent.VK_T, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
 			e -> addSubtask());
 		editMenu.add(addSubtaskItem);
-		editMenu.add(menuItem("Add milestone",
+		editMenu.add(menuItem(Messages.get("action.addMilestone"),
 			KeyStroke.getKeyStroke(KeyEvent.VK_M, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
 			e -> addMilestone()));
 		editMenu.addSeparator();
-		deleteItem = menuItem("Delete task",
+		deleteItem = menuItem(Messages.get("action.deleteTask"),
 			KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), e -> deleteSelection());
 		editMenu.add(deleteItem);
 		menuBar.add(editMenu);
 
-		JMenu linkMenu = new JMenu("Links");
-		linkItem = menuItem("Link selected",
+		JMenu linkMenu = new JMenu(Messages.get("menu.links"));
+		linkItem = menuItem(Messages.get("action.link"),
 			KeyStroke.getKeyStroke(KeyEvent.VK_L, InputEvent.CTRL_DOWN_MASK), e -> linkSelection());
 		linkMenu.add(linkItem);
-		unlinkItem = menuItem("Unlink selected",
+		unlinkItem = menuItem(Messages.get("action.unlink"),
 			KeyStroke.getKeyStroke(KeyEvent.VK_L, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
 			e -> unlinkSelection());
 		linkMenu.add(unlinkItem);
 		menuBar.add(linkMenu);
 
-		JMenu viewMenu = new JMenu("View");
-		viewMenu.add(menuItem("Zoom in",
+		JMenu viewMenu = new JMenu(Messages.get("menu.view"));
+		viewMenu.add(menuItem(Messages.get("action.zoomIn"),
 			KeyStroke.getKeyStroke(KeyEvent.VK_PLUS, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
 			e -> chartPanel.setDayWidth(Math.min(80, chartPanel.dayWidth() + 4))));
-		viewMenu.add(menuItem("Zoom out",
+		viewMenu.add(menuItem(Messages.get("action.zoomOut"),
 			KeyStroke.getKeyStroke(KeyEvent.VK_MINUS, InputEvent.CTRL_DOWN_MASK),
 			e -> chartPanel.setDayWidth(Math.max(6, chartPanel.dayWidth() - 4))));
-		viewMenu.add(menuItem("Reset zoom",
+		viewMenu.add(menuItem(Messages.get("action.resetZoom"),
 			KeyStroke.getKeyStroke(KeyEvent.VK_0, InputEvent.CTRL_DOWN_MASK), e -> chartPanel.setDayWidth(18)));
 		menuBar.add(viewMenu);
 
+		JMenu languageMenu = new JMenu(Messages.get("menu.language"));
+		ButtonGroup group = new ButtonGroup();
+		JRadioButtonMenuItem englishItem = new JRadioButtonMenuItem(Messages.get("language.english"));
+		JRadioButtonMenuItem spanishItem = new JRadioButtonMenuItem(Messages.get("language.spanish"));
+		boolean spanish = Messages.locale().getLanguage().startsWith("es");
+		englishItem.setSelected(!spanish);
+		spanishItem.setSelected(spanish);
+		englishItem.addActionListener(e -> setLanguage(Locale.ENGLISH));
+		spanishItem.addActionListener(e -> setLanguage(new Locale("es")));
+		group.add(englishItem);
+		group.add(spanishItem);
+		languageMenu.add(englishItem);
+		languageMenu.add(spanishItem);
+		menuBar.add(languageMenu);
+
 		return menuBar;
+	}
+
+	private void setLanguage(Locale newLocale) {
+		if (Messages.locale().equals(newLocale)) {
+			return;
+		}
+		Messages.setLocale(newLocale);
+		applyLocale();
+	}
+
+	private void applyLocale() {
+		setJMenuBar(buildMenuBar());
+		JToolBar newToolbar = buildToolbar();
+		getContentPane().remove(toolbar);
+		add(newToolbar, BorderLayout.NORTH);
+		toolbar = newToolbar;
+		tablePanel.refreshColumnHeaders();
+		welcomePanel.refreshTexts();
+		updateStatus();
+		validate();
 	}
 
 	private JMenuItem menuItem(String text, ActionListener action) {
@@ -165,26 +217,27 @@ public final class MainFrame extends JFrame {
 		JToolBar toolbar = new JToolBar();
 		toolbar.setFloatable(false);
 
-		toolbar.add(new JLabel(" Project: "));
+		toolbar.add(new JLabel(Messages.get("toolbar.project") + " "));
 		projectNameField.addActionListener(e -> runSafely(() -> controller.renameProject(projectNameField.getText())));
 		toolbar.add(projectNameField);
 
 		toolbar.addSeparator();
-		toolbar.add(button("New", e -> newProject()));
-		toolbar.add(button("Open", e -> openProject()));
-		toolbar.add(button("Save", e -> runSafely(() -> controller.renameProject(projectNameField.getText()))));
+		toolbar.add(button(Messages.get("toolbar.new"), e -> newProject()));
+		toolbar.add(button(Messages.get("toolbar.open"), e -> openProject()));
+		toolbar.add(button(Messages.get("toolbar.save"),
+			e -> runSafely(() -> controller.renameProject(projectNameField.getText()))));
 
 		toolbar.addSeparator();
-		toolbar.add(button("Add task", e -> addTask()));
-		addSubtaskButton = button("Add subtask", e -> addSubtask());
+		toolbar.add(button(Messages.get("toolbar.addTask"), e -> addTask()));
+		addSubtaskButton = button(Messages.get("toolbar.addSubtask"), e -> addSubtask());
 		toolbar.add(addSubtaskButton);
-		toolbar.add(button("Add milestone", e -> addMilestone()));
-		deleteButton = button("Delete", e -> deleteSelection());
+		toolbar.add(button(Messages.get("toolbar.addMilestone"), e -> addMilestone()));
+		deleteButton = button(Messages.get("toolbar.delete"), e -> deleteSelection());
 		toolbar.add(deleteButton);
 
 		toolbar.addSeparator();
-		linkButton = button("Link", e -> linkSelection());
-		unlinkButton = button("Unlink", e -> unlinkSelection());
+		linkButton = button(Messages.get("toolbar.link"), e -> linkSelection());
+		unlinkButton = button(Messages.get("toolbar.unlink"), e -> unlinkSelection());
 		toolbar.add(linkButton);
 		toolbar.add(unlinkButton);
 
@@ -195,7 +248,7 @@ public final class MainFrame extends JFrame {
 		return toolbar;
 	}
 
-	private JSplitPane buildCenter() {
+	private JSplitPane buildSplitPane() {
 		JScrollPane chartScroll = new JScrollPane(chartPanel);
 		chartScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
 		tablePanel.getVerticalScrollBar().setModel(chartScroll.getVerticalScrollBar().getModel());
@@ -230,7 +283,9 @@ public final class MainFrame extends JFrame {
 	}
 
 	private void newProject() {
-		String name = JOptionPane.showInputDialog(this, "Project name:", "New project", JOptionPane.QUESTION_MESSAGE);
+		String name = JOptionPane.showInputDialog(this,
+			Messages.get("dialog.newProject.message"),
+			Messages.get("dialog.newProject.title"), JOptionPane.QUESTION_MESSAGE);
 		if (name == null || name.isBlank()) {
 			return;
 		}
@@ -245,7 +300,9 @@ public final class MainFrame extends JFrame {
 	}
 
 	private void addTask() {
-		String name = JOptionPane.showInputDialog(this, "Task name:", "New task", JOptionPane.QUESTION_MESSAGE);
+		String name = JOptionPane.showInputDialog(this,
+			Messages.get("dialog.newTask.message"),
+			Messages.get("dialog.newTask.title"), JOptionPane.QUESTION_MESSAGE);
 		if (name == null || name.isBlank()) {
 			return;
 		}
@@ -261,7 +318,9 @@ public final class MainFrame extends JFrame {
 	}
 
 	private void addMilestone() {
-		String name = JOptionPane.showInputDialog(this, "Milestone name:", "Milestone", JOptionPane.QUESTION_MESSAGE);
+		String name = JOptionPane.showInputDialog(this,
+			Messages.get("dialog.milestone.message"),
+			Messages.get("dialog.milestone.title"), JOptionPane.QUESTION_MESSAGE);
 		if (name == null || name.isBlank()) {
 			return;
 		}
@@ -323,6 +382,7 @@ public final class MainFrame extends JFrame {
 		if (!controller.hasProject()) {
 			return;
 		}
+		centerCards.show(centerPanel, "main");
 		ProjectDto dto = controller.current();
 		tablePanel.setTasks(dto.tasks());
 		projectNameField.setText(dto.name());
@@ -349,7 +409,7 @@ public final class MainFrame extends JFrame {
 			.min(LocalDate::compareTo).orElse(LocalDate.now());
 		LocalDate max = dto.tasks().stream().map(TaskDto::end)
 			.max(LocalDate::compareTo).orElse(LocalDate.now());
-		statusLabel.setText(String.format("  %d tasks, %d links, %d milestones   |   %s .. %s",
+		statusLabel.setText(String.format(Messages.get("status.summary"),
 			dto.tasks().size(), dto.links().size(), milestones, min, max));
 	}
 
@@ -372,7 +432,7 @@ public final class MainFrame extends JFrame {
 		try {
 			action.run();
 		} catch (RuntimeException ex) {
-			JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(this, ex.getMessage(), Messages.get("dialog.error"), JOptionPane.ERROR_MESSAGE);
 		}
 	}
 

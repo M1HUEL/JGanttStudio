@@ -135,9 +135,18 @@ public final class GanttChartPanel extends JComponent {
 
     @Override
     public Dimension getPreferredSize() {
+        ensureRange();
         int width = timeScale.xOf(rangeEnd) + timeScale.dayWidth() + 120;
         int height = HEADER_HEIGHT + visible.size() * ROW_HEIGHT + 60;
         return new Dimension(Math.max(width, 600), height);
+    }
+
+    private void ensureRange() {
+        if (rangeStart == null || rangeEnd == null) {
+            rangeStart = LocalDate.now().minusDays(4);
+            rangeEnd = LocalDate.now().plusDays(4);
+            timeScale.setStartDate(rangeStart);
+        }
     }
 
     @Override
