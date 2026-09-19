@@ -4,7 +4,9 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.event.ActionListener;
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -244,11 +246,12 @@ public final class MainFrame extends JFrame {
     }
 
     private void updateButtons() {
-        int selected = tablePanel.getSelectedTaskIds().size();
-        addSubtaskButton.setEnabled(selected >= 1);
-        deleteButton.setEnabled(selected >= 1);
-        linkButton.setEnabled(selected >= 2);
-        unlinkButton.setEnabled(selected >= 2);
+        List<TaskId> selected = tablePanel.getSelectedTaskIds();
+        addSubtaskButton.setEnabled(selected.size() >= 1);
+        deleteButton.setEnabled(selected.size() >= 1);
+        linkButton.setEnabled(selected.size() >= 2);
+        unlinkButton.setEnabled(selected.size() >= 2);
+        chartPanel.setSelectedIds(new HashSet<>(selected));
     }
 
     private void runSafely(Runnable action) {

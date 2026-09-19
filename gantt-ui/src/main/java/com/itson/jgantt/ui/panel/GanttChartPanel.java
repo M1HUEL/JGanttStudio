@@ -6,12 +6,15 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Polygon;
 import java.awt.RenderingHints;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.swing.JComponent;
 
@@ -33,6 +36,9 @@ public final class GanttChartPanel extends JComponent {
     private static final Color HEADER_COLOR = new Color(0xE0E7EF);
     private static final Color TODAY_COLOR = new Color(0xC0392B);
     private static final Color TEXT_COLOR = new Color(0x333333);
+    private static final Color WEEKEND_COLOR = new Color(0xF7F7F7);
+    private static final Color SELECTION_COLOR = new Color(46, 109, 164, 38);
+    private static final Color SELECTED_BAR_COLOR = new Color(0x1B4F8A);
 
     private static final DateTimeFormatter MONTH_FORMAT = DateTimeFormatter.ofPattern("MMM yyyy");
     private static final Font HEADER_FONT = new Font(Font.SANS_SERIF, Font.BOLD, 11);
@@ -42,6 +48,7 @@ public final class GanttChartPanel extends JComponent {
     private List<TaskDto> allTasks = List.of();
     private List<TaskDto> visible = List.of();
     private List<TaskLinkDto> links = List.of();
+    private Set<TaskId> selectedIds = Set.of();
     private LocalDate rangeStart;
     private LocalDate rangeEnd;
 
@@ -50,6 +57,11 @@ public final class GanttChartPanel extends JComponent {
         this.visible = visible;
         this.links = links;
         updateRange();
+    }
+
+    public void setSelectedIds(Set<TaskId> selectedIds) {
+        this.selectedIds = selectedIds == null ? Set.of() : Set.copyOf(selectedIds);
+        repaint();
     }
 
     public void setVisibleTasks(List<TaskDto> visible) {
@@ -84,9 +96,11 @@ public final class GanttChartPanel extends JComponent {
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         paintBackground(g2);
+        paintWeekends(g2);
         paintGrid(g2);
         paintToday(g2);
         paintHeader(g2);
+        paintSelection(g2);
         paintBars(g2);
         paintLinks(g2);
         g2.dispose();
@@ -114,6 +128,30 @@ public final class GanttChartPanel extends JComponent {
     private void paintBackground(Graphics2D g) {
         g.setColor(Color.WHITE);
         g.fillRect(0, 0, getWidth(), getHeight());
+    }
+
+    private void paintWeekends(Graphics2D g) {
+        g.setColor(WEEKEND_COLOR);
+        for (LocalDate date = rangeStart; !date.isAfter(rangeEnd); date = date.plusDays(1)) {
+            DayOfWeek day = date.getDayOfWeek();
+            if (day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY) {
+                int x = timeScale.xOf(date);
+                g.fillRect(x, HEADER_HEIGHT, timeScale.dayWidth(), getHeight() - HEADER_HEIGHT);
+            }
+        }
+    }
+
+    private void paintSelection(Graphics2D g) {
+        if (selectedIds.isEmpty()) {
+            return;
+        }
+        g.setColor(SELECTION_COLOR);
+        for (int index = 0; index < visible.size(); index++) {
+            if (selectedIds.contains(visible.get(index).id())) {
+                int y = HEADER_HEIGHT + index * ROW_HEIGHT;
+                g.fillRect(0, y, getWidth(), ROW_HEIGHT);
+            }
+        }
     }
 
     private void paintGrid(Graphics2D g) {
@@ -155,9 +193,11 @@ public final class GanttChartPanel extends JComponent {
         }
 
         g.setColor(TEXT_COLOR);
-        for (LocalDate date = rangeStart; !date.isAfter(rangeEnd); date = date.plusDays(1)) {
-            int x = timeScale.xOf(date);
-            g.drawString(String.valueOf(date.getDayOfMonth()), x + 2, HEADER_HEIGHT - 7);
+        if (timeScale.dayWidth() >= 8) {
+            for (LocalDate date = rangeStart; !date.isAfter(rangeEnd); date = date.plusDays(1)) {
+                int x = timeScale.xOf(date);
+                g.drawString(String.valueOf(date.getDayOfMonth()), x + 2, HEADER_HEIGHT - 7);
+            }
         }
 
         g.setColor(LINK_COLOR);
@@ -169,14 +209,15 @@ public final class GanttChartPanel extends JComponent {
         g.setFont(LABEL_FONT);
         for (int index = 0; index < visible.size(); index++) {
             TaskDto task = visible.get(index);
+            boolean selected = selectedIds.contains(task.id());
             int y = HEADER_HEIGHT + index * ROW_HEIGHT;
             int barHeight = Math.max(10, ROW_HEIGHT - 14);
             int barY = y + (ROW_HEIGHT - barHeight) / 2;
 
             if (task.milestone()) {
-                paintMilestone(g, task, barY, barHeight);
+                paintMilestone(g, task, barY, barHeight, selected);
             } else {
-                paintTaskBar(g, task, barY, barHeight);
+                paintTaskBar(g, task, barY, barHeight, selected);
             }
 
             g.setColor(TEXT_COLOR);
@@ -185,7 +226,7 @@ public final class GanttChartPanel extends JComponent {
         }
     }
 
-    private void paintTaskBar(Graphics2D g, TaskDto task, int barY, int barHeight) {
+    private void paintTaskBar(Graphics2D g, TaskDto task, int barY, int barHeight, boolean selected) {
         int x0 = timeScale.xOf(task.start());
         int width = timeScale.widthFor(task.start(), task.end());
         g.setColor(BAR_COLOR);
@@ -196,20 +237,32 @@ public final class GanttChartPanel extends JComponent {
             g.setColor(PROGRESS_COLOR);
             g.fillRect(x0 + 1, barY + barHeight / 2, progressWidth - 2, barHeight / 2);
         }
-        g.setColor(LINK_COLOR);
+        if (selected) {
+            g.setColor(SELECTED_BAR_COLOR);
+            g.setStroke(new BasicStroke(2f));
+        } else {
+            g.setColor(LINK_COLOR);
+        }
         g.drawRoundRect(x0, barY, width, barHeight, 4, 4);
+        g.setStroke(new BasicStroke(1f));
     }
 
-    private void paintMilestone(Graphics2D g, TaskDto task, int barY, int barHeight) {
+    private void paintMilestone(Graphics2D g, TaskDto task, int barY, int barHeight, boolean selected) {
         int centerX = timeScale.xOf(task.start()) + timeScale.dayWidth() / 2;
         int centerY = barY + barHeight / 2;
-        int size = Math.max(7, barHeight / 2);
+        int size = Math.max(8, barHeight);
         int[] xs = {centerX, centerX + size, centerX, centerX - size};
         int[] ys = {centerY - size, centerY, centerY + size, centerY};
         g.setColor(MILESTONE_COLOR);
         g.fillPolygon(xs, ys, 4);
-        g.setColor(LINK_COLOR);
+        if (selected) {
+            g.setColor(SELECTED_BAR_COLOR);
+            g.setStroke(new BasicStroke(2f));
+        } else {
+            g.setColor(LINK_COLOR);
+        }
         g.drawPolygon(xs, ys, 4);
+        g.setStroke(new BasicStroke(1f));
     }
 
     private void paintLinks(Graphics2D g) {
@@ -237,12 +290,35 @@ public final class GanttChartPanel extends JComponent {
             int y1 = HEADER_HEIGHT + predRow * ROW_HEIGHT + ROW_HEIGHT / 2;
             int y2 = HEADER_HEIGHT + succRow * ROW_HEIGHT + ROW_HEIGHT / 2;
 
-            g.drawLine(x1, y1, x2, y1);
-            g.drawLine(x2, y1, x2, y2);
+            drawLinkPath(g, x1, y1, x2, y2);
+        }
+    }
+
+    private void drawLinkPath(Graphics2D g, int x1, int y1, int x2, int y2) {
+        int startX = x1 + 8;
+        int endX = x2 - 6;
+        if (endX > startX) {
+            g.drawLine(startX, y1, endX, y1);
             if (y1 != y2) {
-                g.drawLine(x2 - 6, y2 - 5, x2, y2);
-                g.drawLine(x2, y2, x2 - 6, y2 + 5);
+                g.drawLine(endX, y1, endX, y2);
+            }
+        } else {
+            int step = y1 == y2 ? -8 : (y1 < y2 ? 6 : -6);
+            int midY = y1 + step;
+            g.drawLine(startX, y1, startX, midY);
+            g.drawLine(startX, midY, endX, midY);
+            if (y1 != y2) {
+                g.drawLine(endX, midY, endX, y2);
             }
         }
+        g.fillPolygon(arrowHead(x2, y2));
+    }
+
+    private Polygon arrowHead(int x, int y) {
+        Polygon arrow = new Polygon();
+        arrow.addPoint(x, y);
+        arrow.addPoint(x - 7, y - 4);
+        arrow.addPoint(x - 7, y + 4);
+        return arrow;
     }
 }
