@@ -1,0 +1,33 @@
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+build.log
+
+# NetBeans
+nbproject/private/
+nbproject/ide-target/
+nbbuild/
+nbdist/
+nbactions.xml
+nb-configuration.xml
+
+# IDE (generic)
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+*.prefs
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
